@@ -9,13 +9,28 @@ export const callClaudeApi = async (systemPrompt: string, userPrompt: string): P
   
   if (isPlaceholder) {
     console.log('⚠️ Using mocked Anthropic Claude API due to placeholder key.');
-    // Return mock successful match array for testing eligibility scan
+    // Return mock successful match array for testing eligibility scan using real seeded IDs
     return JSON.stringify([
       {
-        programId: 'mock-program-id',
+        programId: 'tanf',
         status: 'qualified',
         confidence_score: 95,
-        reasoning: 'Household income and size fall well within standard federal guidelines for this program.',
+        reasoning: 'Household income and size fall well within guidelines for temporary assistance.',
+        estimated_benefit: '$400 - $900/mo'
+      },
+      {
+        programId: 'snap',
+        status: 'likely_qualified',
+        confidence_score: 85,
+        reasoning: 'Your household size matches the nutrition assistance criteria for your state.',
+        estimated_benefit: '$180 per person/mo'
+      },
+      {
+        programId: 'wic',
+        status: 'check_required',
+        confidence_score: 60,
+        reasoning: 'Based on your children ages, you may qualify for WIC, but an in-person appointment is required.',
+        estimated_benefit: 'Food package + formula'
       }
     ]);
   }

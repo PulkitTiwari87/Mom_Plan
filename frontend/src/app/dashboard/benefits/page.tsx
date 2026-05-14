@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
@@ -24,6 +25,7 @@ export default function BenefitsPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   const { data: results, isLoading } = useQuery({
     queryKey: ["eligibility-results"],
@@ -50,7 +52,7 @@ export default function BenefitsPage() {
     { key: "all", label: "All Programs" },
     { key: "qualified", label: "Qualified" },
     { key: "likely_qualified", label: "Likely Qualified" },
-    { key: "check_required", label: "Check Required" },
+    { key: "check_required", label: "Additional Review" },
     { key: "not_qualified", label: "Not Qualified" },
   ];
 
@@ -148,16 +150,22 @@ export default function BenefitsPage() {
           <h3 className="font-display font-semibold text-xl text-on-surface mb-2">
             {results?.length === 0 ? "No scan results yet" : "No programs match your filter"}
           </h3>
-          <p className="text-on-surface-variant mb-6">
+          <p className="text-on-surface-variant mb-6 max-w-sm mx-auto">
             {results?.length === 0
-              ? "Run the AI eligibility scan to discover matched benefits"
+              ? "We need a bit more information about your family to find the best matches. Complete your profile to see eligible benefits."
               : "Try adjusting your filter criteria"}
           </p>
           {results?.length === 0 && (
-            <Button onClick={() => scanMutation.mutate()} loading={scanMutation.isPending}>
-              <Sparkles className="w-4 h-4" />
-              Run Eligibility Scan
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+              <Button onClick={() => router.push("/eligibility")} variant="primary">
+                <ArrowRight className="w-4 h-4" />
+                Complete Family Profile
+              </Button>
+              <Button onClick={() => scanMutation.mutate()} variant="outline" loading={scanMutation.isPending}>
+                <RefreshCw className="w-4 h-4" />
+                Run AI Scan
+              </Button>
+            </div>
           )}
         </div>
       ) : (

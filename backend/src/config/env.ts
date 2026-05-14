@@ -8,6 +8,7 @@ const envSchema = z.object({
   PORT: z.string().default('5000'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   FRONTEND_URL: z.string().default('http://localhost:3000'),
+  ADMIN_FRONTEND_URL: z.string().default('http://localhost:3001'),
 
   // ─── Database ──────────────────────────────────────────────────────
   // Neon: DATABASE_URL = pooled connection (runtime queries)

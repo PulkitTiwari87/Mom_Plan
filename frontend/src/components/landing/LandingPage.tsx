@@ -522,7 +522,7 @@ export default function LandingPage() {
             <p className="text-lg text-on-surface-variant">No hidden fees. Cancel anytime.</p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-start">
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto items-stretch pt-6">
             {pricingPlans.map((plan, i) => (
               <motion.div
                 key={plan.name}
@@ -531,15 +531,18 @@ export default function LandingPage() {
                 whileInView="visible"
                 viewport={{ once: true }}
                 custom={i * 0.1}
-                className="relative"
+                className="relative flex flex-col"
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-primary rounded-full text-white text-xs font-bold shadow-primary">
+                  <div className="absolute -top-4.5 left-1/2 -translate-x-1/2 z-10 px-4 py-1.5 bg-gradient-primary rounded-full text-white text-[10px] uppercase tracking-wider font-black shadow-lg shadow-primary/20 whitespace-nowrap">
                     Most Popular
                   </div>
                 )}
                 <Card
-                  className={`h-full ${plan.popular ? "border-2 border-primary-300 shadow-primary" : ""}`}
+                  className={cn(
+                    "h-full flex flex-col",
+                    plan.popular ? "border-2 border-primary-300 shadow-xl shadow-primary/10 ring-4 ring-primary-50" : "border-outline-variant/30"
+                  )}
                   padding="lg"
                 >
                   <div className="mb-6">
@@ -551,15 +554,15 @@ export default function LandingPage() {
                       <span className="font-display font-bold text-4xl text-on-surface">
                         {plan.price}
                       </span>
-                      <span className="text-on-surface-variant text-sm mb-1">{plan.period}</span>
+                      <span className="text-on-surface-variant text-sm mb-1.5">{plan.period}</span>
                     </div>
                   </div>
 
-                  <ul className="space-y-3 mb-8">
+                  <ul className="space-y-3 mb-8 flex-1">
                     {plan.features.map((feature) => (
                       <li key={feature} className="flex items-start gap-2.5">
                         <CheckCircle2 className="w-4 h-4 text-primary-500 shrink-0 mt-0.5" />
-                        <span className="text-sm text-on-surface-variant">{feature}</span>
+                        <span className="text-sm text-on-surface-variant leading-tight">{feature}</span>
                       </li>
                     ))}
                   </ul>
@@ -567,12 +570,12 @@ export default function LandingPage() {
                   <PrimaryLink
                     href={plan.href}
                     className={cn(
-                      "w-full text-sm py-2.5",
-                      !plan.popular && "bg-primary-50 text-primary-600 shadow-none hover:bg-primary-100 hover:shadow-none"
+                      "w-full text-sm py-3 rounded-xl",
+                      !plan.popular && "bg-surface-container text-on-surface-variant shadow-none border border-outline-variant hover:bg-surface-container-high hover:shadow-none hover:text-on-surface"
                     )}
                   >
                     {plan.cta}
-                    <ArrowRight className="w-4 h-4" />
+                    <ArrowRight className="ml-2 w-4 h-4" />
                   </PrimaryLink>
                 </Card>
               </motion.div>

@@ -57,7 +57,7 @@ export function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     qualified: "Qualified",
     likely_qualified: "Likely Qualified",
-    check_required: "Check Required",
+    check_required: "Additional Review",
     not_qualified: "Not Qualified",
     draft: "Draft",
     submitted: "Submitted",

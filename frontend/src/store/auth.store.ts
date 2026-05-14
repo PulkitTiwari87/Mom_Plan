@@ -7,6 +7,17 @@ export interface AuthUser {
   full_name: string;
   role: "user" | "admin" | "counselor";
   plan: "free" | "family" | "navigator";
+  state?: string;
+  zip_code?: string;
+  family_profile?: {
+    household_size: number;
+    num_children: number;
+    monthly_income: number;
+    employment_status: string;
+    housing_status: string;
+    has_disability: boolean;
+    is_pregnant: boolean;
+  };
 }
 
 interface AuthState {

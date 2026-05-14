@@ -237,7 +237,10 @@ export function DashboardSidebar() {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex shrink-0 h-screen sticky top-0">
+      <aside 
+        suppressHydrationWarning
+        className="hidden lg:flex shrink-0 h-screen sticky top-0"
+      >
         {SidebarContent}
       </aside>
 
@@ -261,6 +264,7 @@ export function DashboardSidebar() {
               onClick={() => setMobileOpen(false)}
             />
             <motion.div
+              suppressHydrationWarning
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}

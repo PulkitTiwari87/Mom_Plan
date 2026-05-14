@@ -26,7 +26,7 @@ app.use(helmet());
 // CORS Configured exclusively for frontend domain as specified
 app.use(
   cors({
-    origin: env.FRONTEND_URL,
+    origin: [env.FRONTEND_URL, env.ADMIN_FRONTEND_URL],
     credentials: true,
   })
 );

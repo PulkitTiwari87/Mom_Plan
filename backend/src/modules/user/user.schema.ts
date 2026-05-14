@@ -6,6 +6,16 @@ export const updateProfileSchema = z.object({
     phone: z.string().optional(),
     state: z.string().optional(),
     zip_code: z.string().optional(),
+    // Family Profile fields allowed in main profile update for convenience
+    household_size: z.number().int().min(1).optional(),
+    num_children: z.number().int().min(0).optional(),
+    children_ages: z.array(z.number()).optional(),
+    monthly_income: z.number().min(0).optional(),
+    employment_status: z.string().min(1).optional(),
+    housing_status: z.string().min(1).optional(),
+    has_disability: z.boolean().optional(),
+    is_pregnant: z.boolean().optional(),
+    citizenship_status: z.boolean().optional(),
   }),
 });
 

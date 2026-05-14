@@ -19,6 +19,7 @@ export function Card({
 }: CardProps) {
   return (
     <div
+      suppressHydrationWarning
       className={cn(
         "rounded-card border",
         glass

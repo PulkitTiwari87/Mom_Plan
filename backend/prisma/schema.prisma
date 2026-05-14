@@ -90,6 +90,8 @@ model BenefitProgram {
   estimated_monthly_value_max Float
   application_url             String?
   is_active                   Boolean  @default(true)
+  tags                        String[] @default([])
+  metadata                    Json?
 
   // Relations
   eligibility_results         EligibilityResult[]

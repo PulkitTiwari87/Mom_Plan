@@ -122,7 +122,10 @@ export function Navbar() {
 
         {/* Mobile Menu */}
         {isMobileOpen && (
-          <div className="md:hidden border-t border-outline-variant/20 mt-2 py-4 bg-white/95 backdrop-blur-md rounded-b-2xl">
+          <div 
+            suppressHydrationWarning
+            className="md:hidden border-t border-outline-variant/20 mt-2 py-4 bg-white/95 backdrop-blur-md rounded-b-2xl"
+          >
             <ul className="flex flex-col gap-1 mb-4">
               {navLinks.map((link) => (
                 <li key={link.href}>

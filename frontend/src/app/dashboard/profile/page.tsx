@@ -18,6 +18,14 @@ const profileSchema = z.object({
   full_name: z.string().min(2, "Required"),
   email: z.string().email("Invalid email"),
   phone: z.string().optional(),
+  state: z.string().optional(),
+  household_size: z.string().optional(),
+  num_children: z.string().optional(),
+  monthly_income: z.string().optional(),
+  employment_status: z.string().optional(),
+  housing_status: z.string().optional(),
+  is_pregnant: z.boolean().optional(),
+  has_disability: z.boolean().optional(),
 });
 
 const passwordSchema = z
@@ -44,14 +52,30 @@ export default function ProfilePage() {
     defaultValues: {
       full_name: user?.full_name || "",
       email: user?.email || "",
-      phone: "",
+      phone: user?.phone || "",
+      state: user?.state || "",
+      household_size: String(user?.family_profile?.household_size || ""),
+      num_children: String(user?.family_profile?.num_children || ""),
+      monthly_income: String(user?.family_profile?.monthly_income || ""),
+      employment_status: user?.family_profile?.employment_status || "",
+      housing_status: user?.family_profile?.housing_status || "",
+      is_pregnant: user?.family_profile?.is_pregnant || false,
+      has_disability: user?.family_profile?.has_disability || false,
     },
   });
 
   const passwordForm = useForm<PasswordForm>({ resolver: zodResolver(passwordSchema) });
 
   const profileMutation = useMutation({
-    mutationFn: (data: ProfileForm) => api.put("/api/user/profile", data),
+    mutationFn: (data: any) => {
+      const payload = {
+        ...data,
+        household_size: data.household_size ? parseInt(data.household_size) : undefined,
+        num_children: data.num_children ? parseInt(data.num_children) : undefined,
+        monthly_income: data.monthly_income ? parseFloat(data.monthly_income) : undefined,
+      };
+      return api.put("/api/user/profile", payload);
+    },
     onSuccess: (res) => {
       updateUser(res.data.data);
       setProfileSuccess(true);
@@ -114,28 +138,63 @@ export default function ProfilePage() {
           onSubmit={profileForm.handleSubmit((data) => profileMutation.mutate(data))}
           className="space-y-4"
         >
-          <Input
-            label="Full Name"
-            error={profileForm.formState.errors.full_name?.message}
-            {...profileForm.register("full_name")}
-          />
-          <Input
-            label="Email Address"
-            type="email"
-            error={profileForm.formState.errors.email?.message}
-            {...profileForm.register("email")}
-          />
-          <Input
-            label="Phone Number"
-            type="tel"
-            hint="Used for deadline SMS alerts"
-            {...profileForm.register("phone")}
-          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Input
+              label="Full Name"
+              error={profileForm.formState.errors.full_name?.message}
+              {...profileForm.register("full_name")}
+            />
+            <Input
+              label="Email Address"
+              type="email"
+              error={profileForm.formState.errors.email?.message}
+              {...profileForm.register("email")}
+            />
+            <Input
+              label="Phone Number"
+              type="tel"
+              hint="Used for deadline SMS alerts"
+              {...profileForm.register("phone")}
+            />
+            <Input
+              label="State"
+              placeholder="e.g. CA"
+              {...profileForm.register("state")}
+            />
+          </div>
+
+          <div className="pt-6 border-t border-outline-variant/10">
+            <h3 className="font-display font-semibold text-lg text-on-surface mb-4">Family Profile</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Input
+                label="Household Size"
+                type="number"
+                {...profileForm.register("household_size")}
+              />
+              <Input
+                label="Number of Children"
+                type="number"
+                {...profileForm.register("num_children")}
+              />
+              <Input
+                label="Monthly Income"
+                type="number"
+                {...profileForm.register("monthly_income")}
+              />
+              <Input
+                label="Employment Status"
+                placeholder="e.g. full_time"
+                {...profileForm.register("employment_status")}
+              />
+            </div>
+          </div>
+
           <Button
             type="submit"
             variant="primary"
             size="md"
             loading={profileMutation.isPending}
+            className="w-full sm:w-auto"
           >
             <Save className="w-4 h-4" />
             Save Changes
