@@ -20,6 +20,9 @@ import adminRoutes from './modules/admin/admin.routes';
 
 const app: Application = express();
 
+// Trust proxy for secure, accurate client IP rate-limiting behind Render/Vercel/reverse proxies
+app.set('trust proxy', 1);
+
 // Security Middleware
 app.use(helmet());
 

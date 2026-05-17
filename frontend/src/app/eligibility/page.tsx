@@ -203,7 +203,7 @@ export default function EligibilityPage() {
 
       // 3. Trigger benefit match scan
       const scanRes = await api.post("/api/eligibility/scan");
-      setResults(scanRes.data.data?.results || []);
+      setResults(scanRes.data.data || []);
       setScanComplete(true);
     } catch (err) {
       console.error("Benefit Scan Error:", err);
@@ -596,10 +596,12 @@ export default function EligibilityPage() {
                         $
                       </div>
                       <input
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         placeholder="e.g. 2800"
                         value={formData.monthly_income}
-                        onChange={(e) => handleInputChange("monthly_income", e.target.value)}
+                        onChange={(e) => handleInputChange("monthly_income", e.target.value.replace(/\D/g, ""))}
                         className="w-full pl-10 pr-4 py-3.5 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-lg transition-all font-black text-on-surface"
                       />
                     </div>
@@ -694,10 +696,12 @@ export default function EligibilityPage() {
                         <div className="relative">
                           <span className="absolute inset-y-0 left-0 pl-4 flex items-center text-on-surface-variant font-bold">$</span>
                           <input
-                            type="number"
+                            type="text"
+                            inputMode="numeric"
+                            pattern="[0-9]*"
                             placeholder="e.g. 1100"
                             value={formData.monthly_rent}
-                            onChange={(e) => handleInputChange("monthly_rent", e.target.value)}
+                            onChange={(e) => handleInputChange("monthly_rent", e.target.value.replace(/\D/g, ""))}
                             className="w-full pl-8 pr-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-base transition-all font-medium text-on-surface"
                           />
                         </div>

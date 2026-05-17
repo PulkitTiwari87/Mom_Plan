@@ -9,11 +9,63 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   hint?: string;
+  numericOnly?: boolean;
 }
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ className, label, error, leftIcon, rightIcon, hint, id, ...props }, ref) => {
+  ({ className, label, error, leftIcon, rightIcon, hint, id, numericOnly, ...props }, ref) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (numericOnly) {
+        const isControlKey = [
+          'Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'Home', 'End'
+        ].includes(e.key) || (e.ctrlKey || e.metaKey);
+
+        const isNumber = /^[0-9]$/.test(e.key);
+
+        if (!isControlKey && !isNumber) {
+          e.preventDefault();
+        }
+      }
+      if (props.onKeyDown) {
+        props.onKeyDown(e);
+      }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+      if (numericOnly) {
+        const pastedText = e.clipboardData.getData("text");
+        if (/\D/.test(pastedText)) {
+          e.preventDefault();
+          const cleanText = pastedText.replace(/\D/g, "");
+          const input = e.currentTarget;
+          const start = input.selectionStart || 0;
+          const end = input.selectionEnd || 0;
+          const value = input.value;
+          const newValue = value.slice(0, start) + cleanText + value.slice(end);
+          input.value = newValue;
+          
+          const event = new Event('input', { bubbles: true });
+          input.dispatchEvent(event);
+        }
+      }
+      if (props.onPaste) {
+        props.onPaste(e);
+      }
+    };
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (numericOnly) {
+        const val = e.target.value;
+        if (/\D/.test(val)) {
+          e.target.value = val.replace(/\D/g, "");
+        }
+      }
+      if (props.onChange) {
+        props.onChange(e);
+      }
+    };
 
     return (
       <div className="flex flex-col gap-1.5" suppressHydrationWarning>
@@ -35,6 +87,9 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           <input
             ref={ref}
             id={inputId}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onChange={handleChange}
             className={cn(
               "w-full rounded-lg border bg-white px-4 py-3 text-sm text-on-surface placeholder:text-on-surface-variant/60 transition-all duration-200",
               "focus:outline-none focus:ring-2 focus:ring-primary-300 focus:border-primary-400",

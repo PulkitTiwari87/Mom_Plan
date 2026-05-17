@@ -115,7 +115,7 @@ export class EligibilityService {
       });
     }
 
-    return parsedResults;
+    return this.getResults(userId);
   }
 
   private async callClaudeApi(prompt: string): Promise<string> {

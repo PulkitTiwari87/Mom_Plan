@@ -153,6 +153,7 @@ export default function ProfilePage() {
             <Input
               label="Phone Number"
               type="tel"
+              numericOnly={true}
               hint="Used for deadline SMS alerts"
               {...profileForm.register("phone")}
             />
@@ -168,17 +169,26 @@ export default function ProfilePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 label="Household Size"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                numericOnly={true}
                 {...profileForm.register("household_size")}
               />
               <Input
                 label="Number of Children"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                numericOnly={true}
                 {...profileForm.register("num_children")}
               />
               <Input
                 label="Monthly Income"
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                numericOnly={true}
                 {...profileForm.register("monthly_income")}
               />
               <Input

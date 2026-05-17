@@ -153,7 +153,8 @@ function RegisterForm() {
               <Input
                 label="Phone Number"
                 type="tel"
-                placeholder="(555) 000-0000 (optional)"
+                numericOnly={true}
+                placeholder="5550000000 (optional)"
                 leftIcon={<Phone className="w-4 h-4" />}
                 hint="For deadline SMS alerts"
                 {...register("phone")}
