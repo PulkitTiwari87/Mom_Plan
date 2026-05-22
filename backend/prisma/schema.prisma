@@ -215,8 +215,8 @@ model Document {
   application_id String?
   application    Application? @relation(fields: [application_id], references: [id], onDelete: SetNull)
   document_type      String       // e.g. "birth_certificate", "proof_of_income"
-  original_file_name String
-  display_name       String
+  original_file_name String       @default("unnamed_file")
+  display_name       String       @default("Unnamed Document")
   file_url           String       // S3 URL
   file_size          Int
   mime_type          String
