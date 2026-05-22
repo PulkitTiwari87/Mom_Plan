@@ -12,3 +12,12 @@ export const uploadDocumentBodySchema = z.object({
     application_id: z.string().nullable().optional(),
   }),
 });
+
+export const renameDocumentSchema = z.object({
+  params: z.object({
+    id: z.string().min(1),
+  }),
+  body: z.object({
+    name: z.string().min(1, 'New document name is required'),
+  }),
+});

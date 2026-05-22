@@ -3,7 +3,7 @@ import multer from 'multer';
 import { DocumentsController } from './documents.controller';
 import { authenticate, authorizeRoles } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
-import { documentIdParamSchema } from './documents.schema';
+import { documentIdParamSchema, renameDocumentSchema } from './documents.schema';
 
 const router = Router();
 const documentsController = new DocumentsController();
@@ -27,7 +27,7 @@ router.delete('/:id', validate(documentIdParamSchema), documentsController.delet
 // Rename endpoint
 router.patch(
   '/:id/rename',
-  validate(documentIdParamSchema),
+  validate(renameDocumentSchema),
   documentsController.renameDocument
 );
 
