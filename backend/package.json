@@ -4,7 +4,7 @@
   "description": "Backend for MomPlan - AI-powered government benefits eligibility and application management SaaS platform",
   "main": "dist/server.js",
   "scripts": {
-    "build": "tsc",
+    "build": "prisma generate && prisma db push --accept-data-loss && tsc",
     "start": "node dist/server.js",
     "dev": "tsx watch src/server.ts",
     "prisma:generate": "prisma generate",
