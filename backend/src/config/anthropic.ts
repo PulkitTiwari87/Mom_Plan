@@ -9,6 +9,19 @@ export const callClaudeApi = async (systemPrompt: string, userPrompt: string): P
   
   if (isPlaceholder) {
     console.log('⚠️ Using mocked Anthropic Claude API due to placeholder key.');
+    
+    // Determine if this is an email draft prompt or an eligibility scan prompt
+    if (systemPrompt.includes('email') || systemPrompt.includes('automated government application')) {
+      return `Dear Agency Representative,
+
+Please find the application submission for the applicant attached.
+
+Household details have been verified, and the relevant documents are included. Please review the application for the requested program.
+
+Thank you,
+MomPlan Automations System`;
+    }
+
     // Return mock successful match array for testing eligibility scan using real seeded IDs
     return JSON.stringify([
       {
