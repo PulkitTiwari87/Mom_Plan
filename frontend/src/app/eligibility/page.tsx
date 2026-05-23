@@ -62,6 +62,25 @@ const INCOME_SOURCES_OPTIONS = [
   { id: "No income", label: "No income right now" },
 ];
 
+const LEGAL_ISSUES_OPTIONS = [
+  { id: "eviction", label: "Eviction or threat of eviction" },
+  { id: "custody", label: "Child custody or visitation" },
+  { id: "domestic_violence", label: "Domestic violence / protective order" },
+  { id: "divorce", label: "Divorce or separation" },
+  { id: "child_support", label: "Child support issues" },
+  { id: "immigration", label: "Immigration or DACA issue" },
+  { id: "benefits_denial", label: "Benefits denial or appeal" },
+  { id: "debt_collection", label: "Debt collection" },
+  { id: "none", label: "None of these" },
+];
+
+const URGENCY_OPTIONS = [
+  { id: "emergency", label: "Emergency — I need help today or tomorrow", desc: "Same-day response routing" },
+  { id: "urgent", label: "Urgent — court date or deadline within 2 weeks", desc: "Prioritized legal screening" },
+  { id: "soon", label: "Soon — within the next month", desc: "Standard screening queue" },
+  { id: "not_urgent", label: "Not urgent — planning ahead", desc: "General information & templates" },
+];
+
 export default function EligibilityPage() {
   const [step, setStep] = useState(1);
   const [isScanning, setIsScanning] = useState(false);
@@ -97,12 +116,13 @@ export default function EligibilityPage() {
     immigration_status: "citizen",
     domestic_violence: false,
     savings_assets: "none",
-    legal_issues: false,
+    legal_issues: [] as string[],
+    urgency: "not_urgent",
     monthly_childcare_cost: "",
   });
 
   // Calculate dynamic steps description
-  const totalSteps = 9;
+  const totalSteps = 10;
 
   const handleInputChange = (field: string, value: any) => {
     setFormData((prev) => {
@@ -138,6 +158,50 @@ export default function EligibilityPage() {
         }
       }
       return { ...prev, income_sources: sources };
+    });
+  };
+
+  const toggleLegalIssue = (issueId: string) => {
+    setFormData((prev) => {
+      let issues = [...prev.legal_issues];
+      if (issueId === "none") {
+        issues = ["none"];
+      } else {
+        issues = issues.filter((id) => id !== "none");
+        if (issues.includes(issueId)) {
+          issues = issues.filter((id) => id !== issueId);
+        } else {
+          issues.push(issueId);
+        }
+      }
+
+      // Auto-sync eviction_risk and domestic_violence based on selections
+      const hasEviction = issues.includes("eviction");
+      const hasDV = issues.includes("domestic_violence") || prev.domestic_violence;
+
+      return {
+        ...prev,
+        legal_issues: issues,
+        eviction_risk: hasEviction ? true : prev.eviction_risk,
+        domestic_violence: hasDV,
+      };
+    });
+  };
+
+  const handleDVResponse = (value: boolean) => {
+    setFormData((prev) => {
+      let issues = [...prev.legal_issues];
+      if (value) {
+        issues = issues.filter((id) => id !== "none");
+        if (!issues.includes("domestic_violence")) {
+          issues.push("domestic_violence");
+        }
+      }
+      return {
+        ...prev,
+        domestic_violence: value,
+        legal_issues: issues,
+      };
     });
   };
 
@@ -205,7 +269,8 @@ export default function EligibilityPage() {
         health_insurance: formData.health_insurance,
         savings_assets: formData.savings_assets,
         monthly_childcare_cost: formData.needs_childcare ? (parseFloat(formData.monthly_childcare_cost) || 0) : null,
-        legal_issues: formData.legal_issues ? ["has_legal_dependencies"] : [],
+        legal_issues: formData.legal_issues,
+        urgency: formData.urgency,
       });
 
       // 3. Trigger benefit match scan
@@ -884,29 +949,137 @@ export default function EligibilityPage() {
                         </div>
                       </div>
                     </label>
-
-                    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-red-50/20 hover:bg-red-50/40 cursor-pointer transition-all">
-                      <input
-                        type="checkbox"
-                        checked={formData.domestic_violence}
-                        onChange={(e) => handleInputChange("domestic_violence", e.target.checked)}
-                        className="w-4 h-4 mt-0.5 rounded accent-red-500 shrink-0"
-                      />
-                      <div>
-                        <div className="font-bold text-sm text-red-800 flex items-center gap-1">
-                          <ShieldAlert className="w-4 h-4 text-red-600 shrink-0" /> Safety & domestic abuse support?
-                        </div>
-                        <div className="text-xs text-red-700/80 mt-0.5">
-                          Triggers safe housing, emergency food vouchers, and immediate legal protection services.
-                        </div>
-                      </div>
-                    </label>
                   </div>
                 </div>
               )}
 
-              {/* Step 9: Additional Context */}
+              {/* Step 9: Legal & Safety Screening */}
               {step === 9 && (
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
+                      Legal & Safety Screening
+                    </h2>
+                    <p className="text-sm text-on-surface-variant">
+                      Confidential screening for civil legal aid and emergency crisis routing.
+                    </p>
+                  </div>
+
+                  <div className="space-y-5">
+                    {/* Domestic Violence Question */}
+                    <div className="p-4 rounded-xl border border-red-100 bg-red-50/10 space-y-3">
+                      <div>
+                        <div className="font-bold text-sm text-on-surface flex items-center gap-1.5">
+                          <ShieldAlert className="w-4 h-4 text-red-600" />
+                          Are you or your children currently experiencing domestic violence or abuse?
+                        </div>
+                        <div className="text-xs text-red-700/80 mt-1">
+                          This is confidential. If you are in immediate danger, call 911.
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleDVResponse(true)}
+                          className={`py-3 px-4 rounded-xl border text-center font-bold transition-all text-sm ${
+                            formData.domestic_violence
+                              ? "bg-red-50 border-red-500 text-red-700 shadow-sm"
+                              : "bg-surface-container-low border-outline-variant/30 text-on-surface hover:bg-surface-container"
+                          }`}
+                        >
+                          Yes
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDVResponse(false)}
+                          className={`py-3 px-4 rounded-xl border text-center font-bold transition-all text-sm ${
+                            !formData.domestic_violence
+                              ? "bg-emerald-50 border-emerald-500 text-emerald-700 shadow-sm"
+                              : "bg-surface-container-low border-outline-variant/30 text-on-surface hover:bg-surface-container"
+                          }`}
+                        >
+                          No
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Legal Issues Checklist */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">
+                          Civil Legal Issues
+                        </label>
+                        <p className="text-xs text-on-surface-variant mb-2">
+                          Are you dealing with any of these right now? Legal aid services low-income residents for civil legal issues. Completely confidential. (Tap all that apply)
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {LEGAL_ISSUES_OPTIONS.map((opt) => {
+                          const active = formData.legal_issues.includes(opt.id);
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => toggleLegalIssue(opt.id)}
+                              className={`p-3 rounded-xl border text-left font-medium transition-all text-sm flex items-center justify-between ${
+                                active
+                                  ? "bg-primary-50 border-primary-500 text-primary-900 shadow-sm"
+                                  : "bg-surface-container-low border-outline-variant/30 text-on-surface hover:bg-surface-container"
+                              }`}
+                            >
+                              <span>{opt.label}</span>
+                              <span className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ml-2 ${
+                                active
+                                  ? "border-primary-600 bg-primary-600 text-white"
+                                  : "border-outline"
+                              }`}>
+                                {active && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Urgency Level */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-1">
+                          How urgent is your situation?
+                        </label>
+                        <p className="text-xs text-on-surface-variant mb-2">
+                          Emergency cases (domestic violence, imminent eviction) get same-day intake.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {URGENCY_OPTIONS.map((opt) => {
+                          const active = formData.urgency === opt.id;
+                          return (
+                            <button
+                              key={opt.id}
+                              type="button"
+                              onClick={() => handleInputChange("urgency", opt.id)}
+                              className={`p-3 rounded-xl border text-left transition-all ${
+                                active
+                                  ? "bg-primary-50 border-primary-500 text-primary-900 shadow-sm"
+                                  : "bg-surface-container-low border-outline-variant/30 text-on-surface hover:bg-surface-container"
+                              }`}
+                            >
+                              <div className="font-bold text-sm">{opt.label}</div>
+                              <div className={`text-xs mt-0.5 ${active ? "text-primary-700" : "text-on-surface-variant"}`}>
+                                {opt.desc}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 10: Additional Context */}
+              {step === 10 && (
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <h2 className="font-display font-black text-2xl md:text-3xl text-on-surface leading-tight">
@@ -930,21 +1103,6 @@ export default function EligibilityPage() {
                         <option value="high">Significant (Above $10,000)</option>
                       </select>
                     </div>
-
-                    <label className="flex items-start gap-3 p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low hover:bg-surface-container cursor-pointer transition-colors">
-                      <input
-                        type="checkbox"
-                        checked={formData.legal_issues}
-                        onChange={(e) => handleInputChange("legal_issues", e.target.checked)}
-                        className="w-4 h-4 mt-0.5 rounded accent-primary-500 shrink-0"
-                      />
-                      <div>
-                        <div className="font-bold text-sm text-on-surface">Legal dependencies or custody issues?</div>
-                        <div className="text-xs text-on-surface-variant mt-0.5">
-                          Triggers specialized family legal aid and guardian assistance programs.
-                        </div>
-                      </div>
-                    </label>
                   </div>
                 </div>
               )}
