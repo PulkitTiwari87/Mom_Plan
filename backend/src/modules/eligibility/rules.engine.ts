@@ -19,7 +19,8 @@ export interface RuleContext {
   eviction_risk?: boolean;
   domestic_violence?: boolean;
   chronic_illness?: boolean;
-  legal_issues?: boolean;
+  legal_issues?: string[];
+  urgency?: string;
   marital_status?: string;
   income_sources?: string[];
   preferred_language?: string;
@@ -233,9 +234,35 @@ export class RulesEngine {
     }
 
     // 13. Legal aid programs
-    if (meta.supports_legal_aid && context.legal_issues) {
-      score += 15;
-      reasons.push('Legal dependency situation — legal aid programs may apply.');
+    if (meta.supports_legal_aid && context.legal_issues && Array.isArray(context.legal_issues)) {
+      const relevantIssues = context.legal_issues.filter(issue => issue !== 'none' && issue !== '');
+      if (relevantIssues.length > 0) {
+        score += 20;
+        reasons.push(`Dealing with civil legal issues (${relevantIssues.join(', ')}). Qualifies for free legal aid services.`);
+        
+        if (context.urgency === 'emergency') {
+          score += 25;
+          reasons.push('Immediate crisis / emergency situation — fast-track intake priority applied.');
+        } else if (context.urgency === 'urgent') {
+          score += 15;
+          reasons.push('Urgent situation (deadline or court date within 2 weeks) — priority queue routing.');
+        } else if (context.urgency === 'soon') {
+          score += 5;
+          reasons.push('Issue requires attention soon (within next month).');
+        }
+      }
+    }
+
+    // 14. Urgency priority boost
+    if (context.urgency === 'emergency') {
+      if (context.eviction_risk && meta.supports_eviction_risk) {
+        score += 15;
+        reasons.push('Emergency level eviction threat — extreme priority matching.');
+      }
+      if (context.domestic_violence && meta.supports_domestic_violence) {
+        score += 15;
+        reasons.push('Emergency level safety / domestic violence situation — immediate shelter / crisis support matching.');
+      }
     }
 
     // Normalize

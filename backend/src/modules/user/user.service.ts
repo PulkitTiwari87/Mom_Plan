@@ -43,7 +43,7 @@ export class UserService {
       chronic_illness, immigration_status, date_of_birth, preferred_language,
       marital_status, other_adults, income_sources, work_situation,
       health_insurance, savings_assets, child_support_status,
-      monthly_childcare_cost, legal_issues
+      monthly_childcare_cost, legal_issues, urgency
     } = data;
 
     // Update User basic info
@@ -67,7 +67,7 @@ export class UserService {
       chronic_illness, immigration_status, date_of_birth, preferred_language,
       marital_status, other_adults, income_sources, work_situation,
       health_insurance, savings_assets, child_support_status,
-      monthly_childcare_cost, legal_issues
+      monthly_childcare_cost, legal_issues, urgency
     ].some(val => val !== undefined);
 
     if (hasFamilyData) {
@@ -103,6 +103,7 @@ export class UserService {
           child_support_status: child_support_status || 'none',
           monthly_childcare_cost: monthly_childcare_cost || null,
           legal_issues: legal_issues || [],
+          urgency: urgency || 'not_urgent',
         },
         update: {
           ...(household_size !== undefined && { household_size }),
@@ -131,6 +132,7 @@ export class UserService {
           ...(child_support_status !== undefined && { child_support_status }),
           ...(monthly_childcare_cost !== undefined && { monthly_childcare_cost }),
           ...(legal_issues !== undefined && { legal_issues }),
+          ...(urgency !== undefined && { urgency }),
         }
       });
     }

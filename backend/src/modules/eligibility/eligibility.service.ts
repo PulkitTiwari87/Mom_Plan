@@ -59,7 +59,8 @@ export class EligibilityService {
         health_insurance: profile.health_insurance || undefined,
         savings_assets: profile.savings_assets || undefined,
         monthly_childcare_cost: profile.monthly_childcare_cost ?? undefined,
-        legal_issues: profile.legal_issues && Array.isArray(profile.legal_issues) && profile.legal_issues.length > 0 ? true : false,
+        legal_issues: profile.legal_issues && Array.isArray(profile.legal_issues) ? (profile.legal_issues as string[]) : [],
+        urgency: profile.urgency || undefined,
       });
       return { programId: p.id, ...evaluation };
     });

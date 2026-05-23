@@ -336,6 +336,33 @@ const programs = [
       priority_score: 72,
       category: 'Utilities'
     }
+  },
+  {
+    id: 'legal_aid',
+    name: 'Civil Legal Aid Services',
+    agency: 'Legal Services Corporation (LSC)',
+    program_type: 'Federal and State Program',
+    federal_or_state: 'Federal Program',
+    description: 'Free civil legal assistance for low-income individuals facing housing, family, domestic violence, or benefits issues.',
+    benefit: 'Free attorney representation & consultation',
+    estimated_monthly_value_min: 150,
+    estimated_monthly_value_max: 800,
+    website: 'https://www.lsc.gov/',
+    application_url: 'https://www.lsc.gov/grants/our-grantees',
+    contact_email: 'info@lsc.gov',
+    tags: ['legal', 'civil-rights', 'emergency', 'family-safety'],
+    eligibility_criteria: {
+      income_threshold_type: 'low',
+      supports_legal_aid: true,
+      priority_score: 80,
+      category: 'Legal'
+    },
+    metadata: {
+      income_threshold_type: 'low',
+      supports_legal_aid: true,
+      priority_score: 80,
+      category: 'Legal'
+    }
   }
 ];
 

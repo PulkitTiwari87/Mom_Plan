@@ -35,6 +35,7 @@ export const updateProfileSchema = z.object({
     child_support_status: z.string().optional(),
     monthly_childcare_cost: z.number().nullable().optional(),
     legal_issues: z.array(z.string()).optional(),
+    urgency: z.string().optional(),
   }),
 });
 
