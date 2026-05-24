@@ -1,25 +1,59 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { FileText, Download, User, Calendar, Database, Shield } from "lucide-react";
+import { FileText, Download, User, Calendar, Database, Shield, Eye } from "lucide-react";
 import { api } from "@/lib/api";
 import { TopBar } from "@/components/layout/TopBar";
 import { formatDate } from "@/lib/utils";
 
 export default function PdfsPage() {
+  const [loadingPdfId, setLoadingPdfId] = useState<string | null>(null);
+
   const { data: pdfs, isLoading } = useQuery({
     queryKey: ["admin-pdfs"],
     queryFn: () => api.get("/api/admin/pdfs").then((r) => r.data.data),
   });
 
-  const handleDownload = async (pdfId: string) => {
+  const handleView = async (pdfId: string) => {
+    setLoadingPdfId(pdfId);
     try {
-      const res = await api.get(`/api/admin/pdfs/${pdfId}/download`);
-      const downloadUrl = res.data.data.url;
-      window.open(downloadUrl, "_blank", "noopener,noreferrer");
+      const response = await api.get(`/api/pdf/${pdfId}/download/stream`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     } catch (err) {
-      console.error("Failed to fetch download URL:", err);
+      console.error("Failed to view PDF:", err);
+    } finally {
+      setLoadingPdfId(null);
+    }
+  };
+
+  const handleDownload = async (pdfId: string, programName: string, applicantName: string) => {
+    setLoadingPdfId(pdfId);
+    try {
+      const response = await api.get(`/api/pdf/${pdfId}/download/stream`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      const cleanProgram = (programName || "Application").replace(/\s+/g, "_");
+      const cleanApplicant = (applicantName || "User").replace(/\s+/g, "_");
+      link.setAttribute("download", `${cleanProgram}_${cleanApplicant}_Package.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      console.error("Failed to download PDF:", err);
+    } finally {
+      setLoadingPdfId(null);
     }
   };
 
@@ -113,7 +147,16 @@ export default function PdfsPage() {
                       <td>
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => handleDownload(pdf.id)}
+                            onClick={() => handleView(pdf.id)}
+                            disabled={loadingPdfId !== null}
+                            title="View PDF Package"
+                            className="w-8 h-8 rounded-lg hover:bg-brand-500/15 text-slate-500 hover:text-brand-400 flex items-center justify-center transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDownload(pdf.id, pdf.program?.name, pdf.user?.full_name)}
+                            disabled={loadingPdfId !== null}
                             title="Download PDF Package"
                             className="w-8 h-8 rounded-lg hover:bg-brand-500/15 text-slate-500 hover:text-brand-400 flex items-center justify-center transition-colors"
                           >

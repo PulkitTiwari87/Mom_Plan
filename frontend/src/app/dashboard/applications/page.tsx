@@ -3,7 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { ClipboardList, Plus, Filter, Search, Send, Loader2, Edit3, X, FileText, AlertTriangle, CheckCircle, Download } from "lucide-react";
+import { ClipboardList, Plus, Filter, Search, Send, Loader2, Edit3, X, FileText, AlertTriangle, CheckCircle, Download, Eye } from "lucide-react";
 import { usePdfGeneration } from "@/hooks/usePdfGeneration";
 import { api } from "@/lib/api";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -21,6 +21,7 @@ export default function ApplicationsPage() {
   const [draftTo, setDraftTo] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [attachPdf, setAttachPdf] = useState(true);
 
   const {
     generatingPdfId,
@@ -28,8 +29,12 @@ export default function ApplicationsPage() {
     validationReport,
     showWarningModal,
     pendingParams,
+    isViewing,
+    isDownloading,
     handleGeneratePdf,
     confirmAndGeneratePdf,
+    viewPdf,
+    downloadPdf,
     closeWarningModal,
     closePdfModal,
   } = usePdfGeneration();
@@ -60,6 +65,7 @@ export default function ApplicationsPage() {
     setDraftSubject("");
     setDraftBody("");
     setDraftTo("");
+    setAttachPdf(app.generated_pdfs && app.generated_pdfs.length > 0);
     try {
       const res = await api.get(`/api/applications/${app.id}/draft`);
       setDraftSubject(res.data.data.subject);
@@ -80,6 +86,7 @@ export default function ApplicationsPage() {
         subject: draftSubject,
         body: draftBody,
         to: draftTo,
+        attach_pdf: attachPdf,
       });
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       setDraftModalOpen(false);
@@ -214,6 +221,36 @@ export default function ApplicationsPage() {
                     </Button>
                   </div>
                 )}
+                {app.generated_pdfs && app.generated_pdfs.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-surface-container-highest flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-medium">
+                      <FileText className="w-3.5 h-3.5 text-primary-500" />
+                      <span>Application Package (v{app.generated_pdfs[0].version})</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => viewPdf(app.generated_pdfs[0].id)}
+                        disabled={isViewing || isDownloading}
+                        loading={isViewing && pdfModal.pdfId === app.generated_pdfs[0].id}
+                      >
+                        <Eye className="w-3.5 h-3.5 mr-1" />
+                        View PDF
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => downloadPdf(app.generated_pdfs[0].id, app.program?.name)}
+                        disabled={isViewing || isDownloading}
+                        loading={isDownloading && pdfModal.pdfId === app.generated_pdfs[0].id}
+                      >
+                        <Download className="w-3.5 h-3.5 mr-1" />
+                        Download
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </Card>
             </motion.div>
           ))}
@@ -278,6 +315,26 @@ export default function ApplicationsPage() {
                       className="w-full px-3 py-2 text-sm border border-outline-variant/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                     />
                   </div>
+                  {activeApp.generated_pdfs && activeApp.generated_pdfs.length > 0 ? (
+                    <div className="flex items-center gap-2 p-3 bg-surface-container-low border border-outline-variant/30 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id="attach-pdf-checkbox"
+                        checked={attachPdf}
+                        onChange={(e) => setAttachPdf(e.target.checked)}
+                        className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-outline-variant/60 cursor-pointer"
+                      />
+                      <label htmlFor="attach-pdf-checkbox" className="text-xs text-on-surface font-semibold cursor-pointer select-none">
+                        Attach generated application package PDF (v{activeApp.generated_pdfs[0].version})
+                      </label>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-surface-container-low border border-dashed border-outline-variant/50 rounded-lg">
+                      <p className="text-xs text-on-surface-variant">
+                        No generated PDF package available. Generate a PDF first to attach it to this email.
+                      </p>
+                    </div>
+                  )}
                   <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
                     <p className="text-xs text-blue-800">
                       <strong>Note:</strong> Your uploaded documents will be automatically attached to this email when sent.
@@ -417,13 +474,26 @@ export default function ApplicationsPage() {
               <Button variant="outline" onClick={closePdfModal}>
                 Close
               </Button>
-              {pdfModal.downloadUrl && (
-                <Button asChild>
-                  <a href={pdfModal.downloadUrl} target="_blank" rel="noopener noreferrer">
+              {pdfModal.pdfId && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => viewPdf(pdfModal.pdfId!)}
+                    disabled={isViewing || isDownloading}
+                    loading={isViewing}
+                  >
+                    <Eye className="w-4 h-4 mr-1.5" />
+                    View PDF
+                  </Button>
+                  <Button
+                    onClick={() => downloadPdf(pdfModal.pdfId!, pdfModal.programName)}
+                    disabled={isViewing || isDownloading}
+                    loading={isDownloading}
+                  >
                     <Download className="w-4 h-4 mr-1.5" />
                     Download PDF
-                  </a>
-                </Button>
+                  </Button>
+                </>
               )}
             </div>
           </motion.div>

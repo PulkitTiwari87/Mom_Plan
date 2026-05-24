@@ -18,6 +18,25 @@ export interface AuthUser {
     housing_status: string;
     has_disability: boolean;
     is_pregnant: boolean;
+    children_ages?: number[];
+
+    // New fields
+    date_of_birth?: string | null;
+    preferred_language?: string;
+    monthly_rent?: number;
+    eviction_risk?: boolean;
+    needs_childcare?: boolean;
+    monthly_childcare_cost?: number | null;
+    health_insurance?: string;
+    chronic_illness?: boolean;
+    immigration_status?: string;
+    domestic_violence?: boolean;
+    marital_status?: string;
+    other_adults?: boolean;
+    income_sources?: string[];
+    savings_assets?: string;
+    legal_issues?: string[];
+    urgency?: string;
   };
 }
 

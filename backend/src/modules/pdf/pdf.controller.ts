@@ -3,6 +3,7 @@ import { PdfService } from './pdf.service';
 import { UnauthorizedError, NotFoundError, ForbiddenError } from '../../utils/errors';
 import { env } from '../../config/env';
 import fs from 'fs';
+import path from 'path';
 
 const pdfService = new PdfService();
 
@@ -66,15 +67,59 @@ export class PdfController {
         throw new ForbiddenError('Access denied');
       }
 
-      const filePath = pdf.file_url;
-      if (!fs.existsSync(filePath)) {
-        throw new NotFoundError('Local PDF file not found on disk');
-      }
-
       const fileName = `${pdf.program?.name || 'Application'}_Package.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
       res.setHeader('Content-Length', pdf.file_size.toString());
+
+      // If it is an S3 URL, stream from S3
+      if (pdf.file_url.startsWith('http://') || pdf.file_url.startsWith('https://')) {
+        const { GetObjectCommand } = require('@aws-sdk/client-s3');
+        const { s3Client } = require('../../config/s3');
+        const urlObj = new URL(pdf.file_url);
+        const key = urlObj.pathname.substring(1); // remove leading slash
+
+        try {
+          const s3Response = await s3Client.send(new GetObjectCommand({
+            Bucket: env.S3_BUCKET_NAME,
+            Key: key,
+          }));
+          
+          if (s3Response.Body) {
+            (s3Response.Body as any).pipe(res);
+            return;
+          } else {
+            throw new NotFoundError('S3 PDF stream body is empty');
+          }
+        } catch (s3Err) {
+          console.error('Failed to stream PDF from S3:', s3Err);
+          throw new NotFoundError('PDF file not found in S3 storage');
+        }
+      }
+
+      // Otherwise, it is a local path
+      let filePath = pdf.file_url;
+      if (!fs.existsSync(filePath)) {
+        // Fallback: try to resolve relative to process.cwd() to handle multi-environment paths
+        const pdfsIndex = pdf.file_url.indexOf('uploads/pdfs/');
+        if (pdfsIndex !== -1) {
+          const relativePath = pdf.file_url.substring(pdfsIndex);
+          const resolvedPath = path.join(process.cwd(), relativePath);
+          if (fs.existsSync(resolvedPath)) {
+            filePath = resolvedPath;
+          } else {
+            // Check if running from root with a backend directory
+            const resolvedPathSub = path.join(process.cwd(), 'backend', relativePath);
+            if (fs.existsSync(resolvedPathSub)) {
+              filePath = resolvedPathSub;
+            } else {
+              throw new NotFoundError(`Local PDF file not found on disk at ${filePath} or ${resolvedPath}`);
+            }
+          }
+        } else {
+          throw new NotFoundError(`Local PDF file not found on disk: ${filePath}`);
+        }
+      }
 
       const stream = fs.createReadStream(filePath);
       stream.pipe(res);

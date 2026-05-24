@@ -45,7 +45,7 @@ export class AutomationService {
    * TASK 6: Prepares a composed email draft for a specific application.
    * Finds the correct contact, generates a templated body using AI, and prepares document attachments.
    */
-  async composeApplicationEmail(applicationId: string, userId: string) {
+  async composeApplicationEmail(applicationId: string, userId: string, attachPdf: boolean = true) {
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
       include: {
@@ -110,13 +110,15 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
     const subject = `Application Submission: ${application.program.name} - ${application.user.full_name}`;
 
     // Check for most recently generated PDF for this application or program+user combo
-    const generatedPdf = await prisma.generatedPdf.findFirst({
-      where: {
-        user_id: userId,
-        program_id: application.program_id,
-      },
-      orderBy: { generated_at: 'desc' },
-    });
+    const generatedPdf = attachPdf
+      ? await prisma.generatedPdf.findFirst({
+          where: {
+            user_id: userId,
+            program_id: application.program_id,
+          },
+          orderBy: { generated_at: 'desc' },
+        })
+      : null;
 
     return {
       to: primaryContact,
@@ -152,12 +154,19 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
   /**
    * TASK 8: Process Application (Sync replacement for BullMQ)
    */
-  async processApplication(applicationId: string, userId: string, customBody?: string, customSubject?: string, customTo?: string) {
+  async processApplication(
+    applicationId: string,
+    userId: string,
+    customBody?: string,
+    customSubject?: string,
+    customTo?: string,
+    attachPdf: boolean = true
+  ) {
     console.log(`[Worker] Processing Apply Now for application: ${applicationId}`);
 
     try {
       // 1. Compose email (this will fetch contact, prepare payload, and use AI to generate email)
-      const emailData = await this.composeApplicationEmail(applicationId, userId);
+      const emailData = await this.composeApplicationEmail(applicationId, userId, attachPdf);
 
       if (customBody) emailData.body = customBody;
       if (customSubject) emailData.subject = customSubject;

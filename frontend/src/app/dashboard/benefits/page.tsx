@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Download,
+  Eye,
 } from "lucide-react";
 import { usePdfGeneration } from "@/hooks/usePdfGeneration";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
@@ -40,8 +41,12 @@ export default function BenefitsPage() {
     validationReport,
     showWarningModal,
     pendingParams,
+    isViewing,
+    isDownloading,
     handleGeneratePdf,
     confirmAndGeneratePdf,
+    viewPdf,
+    downloadPdf,
     closeWarningModal,
     closePdfModal,
   } = usePdfGeneration();
@@ -421,13 +426,26 @@ export default function BenefitsPage() {
               <Button variant="outline" onClick={closePdfModal}>
                 Close
               </Button>
-              {pdfModal.downloadUrl && (
-                <Button asChild>
-                  <a href={pdfModal.downloadUrl} target="_blank" rel="noopener noreferrer">
+              {pdfModal.pdfId && (
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => viewPdf(pdfModal.pdfId!)}
+                    disabled={isViewing || isDownloading}
+                    loading={isViewing}
+                  >
+                    <Eye className="w-4 h-4 mr-1.5" />
+                    View PDF
+                  </Button>
+                  <Button
+                    onClick={() => downloadPdf(pdfModal.pdfId!, pdfModal.programName)}
+                    disabled={isViewing || isDownloading}
+                    loading={isDownloading}
+                  >
                     <Download className="w-4 h-4 mr-1.5" />
                     Download PDF
-                  </a>
-                </Button>
+                  </Button>
+                </>
               )}
             </div>
           </motion.div>

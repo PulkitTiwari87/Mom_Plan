@@ -13,6 +13,9 @@ export class ApplicationsService {
           user: {
             select: { full_name: true, email: true },
           },
+          generated_pdfs: {
+            orderBy: { generated_at: 'desc' },
+          },
         },
         orderBy: [{ priority: 'desc' }, { last_updated_at: 'desc' }],
       });
@@ -23,6 +26,9 @@ export class ApplicationsService {
       where: { user_id: userId },
       include: {
         program: true,
+        generated_pdfs: {
+          orderBy: { generated_at: 'desc' },
+        },
       },
       orderBy: { last_updated_at: 'desc' },
     });
@@ -36,6 +42,9 @@ export class ApplicationsService {
         documents: true,
         deadlines: true,
         user: { select: { full_name: true, email: true } },
+        generated_pdfs: {
+          orderBy: { generated_at: 'desc' },
+        },
       },
     });
 

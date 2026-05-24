@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Heart,
   ArrowLeft,
@@ -86,7 +87,8 @@ export default function EligibilityPage() {
   const [isScanning, setIsScanning] = useState(false);
   const [scanComplete, setScanComplete] = useState(false);
   const [results, setResults] = useState<any[]>([]);
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, updateUser } = useAuthStore();
+  const queryClient = useQueryClient();
   const router = useRouter();
 
   // Onboarding wizard friendly state
@@ -240,7 +242,7 @@ export default function EligibilityPage() {
       });
 
       // 2. Put user profile API
-      await api.put("/api/user/profile", {
+      const profileRes = await api.put("/api/user/profile", {
         full_name: `${formData.first_name} ${formData.last_name}`,
         state: formData.state,
         zip_code: formData.zip_code,
@@ -272,10 +274,17 @@ export default function EligibilityPage() {
         legal_issues: formData.legal_issues,
         urgency: formData.urgency,
       });
+      updateUser(profileRes.data.data);
 
       // 3. Trigger benefit match scan
       const scanRes = await api.post("/api/eligibility/scan");
       setResults(scanRes.data.data || []);
+      
+      // Invalidate queries so that dashboard/benefits pages load the new scan results
+      queryClient.invalidateQueries({ queryKey: ["eligibility-results"] });
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["deadlines"] });
+
       setScanComplete(true);
     } catch (err) {
       console.error("Benefit Scan Error:", err);

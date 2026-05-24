@@ -4,20 +4,34 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth.store";
 import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { api } from "@/lib/api";
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, updateUser } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/login");
+      return;
     }
-  }, [isAuthenticated, router]);
+
+    // Sync database profile state with Zustand on mount
+    api
+      .get("/api/user/profile")
+      .then((res) => {
+        if (res.data && res.data.data) {
+          updateUser(res.data.data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to sync user profile:", err);
+      });
+  }, [isAuthenticated, router, updateUser]);
 
   if (!isAuthenticated) {
     return (

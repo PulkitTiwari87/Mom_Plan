@@ -30,6 +30,9 @@ export function usePdfGeneration() {
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [pendingParams, setPendingParams] = useState<PendingGenerateParams | null>(null);
 
+  const [isViewing, setIsViewing] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+
   const handleGeneratePdf = async (programId: string, applicationId?: string, programName?: string) => {
     // Determine loading indicator key (use application_id if tracker, otherwise program_id)
     const loadId = applicationId || programId;
@@ -94,6 +97,45 @@ export function usePdfGeneration() {
     }
   };
 
+  const viewPdf = async (pdfId: string) => {
+    setIsViewing(true);
+    try {
+      const response = await api.get(`/api/pdf/${pdfId}/download/stream`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      console.error("Failed to view PDF:", err);
+    } finally {
+      setIsViewing(false);
+    }
+  };
+
+  const downloadPdf = async (pdfId: string, programName?: string) => {
+    setIsDownloading(true);
+    try {
+      const response = await api.get(`/api/pdf/${pdfId}/download/stream`, {
+        responseType: "blob",
+      });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `${(programName || "Application").replace(/\s+/g, "_")}_Package.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode?.removeChild(link);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (err) {
+      console.error("Failed to download PDF:", err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const closeWarningModal = () => {
     setShowWarningModal(false);
     setValidationReport(null);
@@ -110,8 +152,12 @@ export function usePdfGeneration() {
     validationReport,
     showWarningModal,
     pendingParams,
+    isViewing,
+    isDownloading,
     handleGeneratePdf,
     confirmAndGeneratePdf,
+    viewPdf,
+    downloadPdf,
     closeWarningModal,
     closePdfModal,
   };
