@@ -10,18 +10,13 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { formatDate, formatRelativeDate } from "@/lib/utils";
+import ApplyModal from "@/components/dashboard/ApplyModal";
 
 export default function ApplicationsPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("all");
   const [draftModalOpen, setDraftModalOpen] = useState(false);
   const [activeApp, setActiveApp] = useState<any>(null);
-  const [draftSubject, setDraftSubject] = useState("");
-  const [draftBody, setDraftBody] = useState("");
-  const [draftTo, setDraftTo] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [attachPdf, setAttachPdf] = useState(true);
 
   const {
     generatingPdfId,
@@ -58,43 +53,9 @@ export default function ApplicationsPage() {
     { key: "rejected", label: "Rejected" },
   ];
 
-  const handlePrepareDraft = async (app: any) => {
+  const handlePrepareDraft = (app: any) => {
     setActiveApp(app);
     setDraftModalOpen(true);
-    setIsGenerating(true);
-    setDraftSubject("");
-    setDraftBody("");
-    setDraftTo("");
-    setAttachPdf(app.generated_pdfs && app.generated_pdfs.length > 0);
-    try {
-      const res = await api.get(`/api/applications/${app.id}/draft`);
-      setDraftSubject(res.data.data.subject);
-      setDraftBody(res.data.data.body);
-      setDraftTo(res.data.data.to || "");
-    } catch (err) {
-      console.error(err);
-      setDraftBody("Failed to generate draft. You can write your own email here.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleSubmitDraft = async () => {
-    setIsSubmitting(true);
-    try {
-      await api.post(`/api/applications/${activeApp.id}/apply`, {
-        subject: draftSubject,
-        body: draftBody,
-        to: draftTo,
-        attach_pdf: attachPdf,
-      });
-      queryClient.invalidateQueries({ queryKey: ["applications"] });
-      setDraftModalOpen(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsSubmitting(false);
-    }
   };
 
   return (
@@ -257,109 +218,16 @@ export default function ApplicationsPage() {
         </div>
       )}
 
-      {/* Draft Modal */}
-      {draftModalOpen && activeApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="bg-surface rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]"
-          >
-            <div className="px-6 py-4 border-b border-surface-container flex items-center justify-between bg-surface-container-lowest">
-              <div>
-                <h3 className="font-display font-semibold text-lg text-on-surface">Review Application Email</h3>
-                <p className="text-xs text-on-surface-variant">
-                  We've drafted an email for {activeApp.program?.name}. You can edit it before sending.
-                </p>
-              </div>
-              <button
-                onClick={() => setDraftModalOpen(false)}
-                className="p-2 rounded-full hover:bg-surface-container text-on-surface-variant"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 overflow-y-auto flex-1">
-              {isGenerating ? (
-                <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary-500 mb-4" />
-                  <p className="text-sm text-on-surface-variant font-medium">AI is drafting your application email...</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface-variant mb-1">To (Recipient Email)</label>
-                    <input
-                      type="email"
-                      value={draftTo}
-                      onChange={(e) => setDraftTo(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-outline-variant/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface-variant mb-1">Subject Line</label>
-                    <input
-                      type="text"
-                      value={draftSubject}
-                      onChange={(e) => setDraftSubject(e.target.value)}
-                      className="w-full px-3 py-2 text-sm border border-outline-variant/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-on-surface-variant mb-1">Email Body</label>
-                    <textarea
-                      value={draftBody}
-                      onChange={(e) => setDraftBody(e.target.value)}
-                      rows={12}
-                      className="w-full px-3 py-2 text-sm border border-outline-variant/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-                    />
-                  </div>
-                  {activeApp.generated_pdfs && activeApp.generated_pdfs.length > 0 ? (
-                    <div className="flex items-center gap-2 p-3 bg-surface-container-low border border-outline-variant/30 rounded-lg">
-                      <input
-                        type="checkbox"
-                        id="attach-pdf-checkbox"
-                        checked={attachPdf}
-                        onChange={(e) => setAttachPdf(e.target.checked)}
-                        className="w-4 h-4 rounded text-primary-600 focus:ring-primary-500 border-outline-variant/60 cursor-pointer"
-                      />
-                      <label htmlFor="attach-pdf-checkbox" className="text-xs text-on-surface font-semibold cursor-pointer select-none">
-                        Attach generated application package PDF (v{activeApp.generated_pdfs[0].version})
-                      </label>
-                    </div>
-                  ) : (
-                    <div className="p-3 bg-surface-container-low border border-dashed border-outline-variant/50 rounded-lg">
-                      <p className="text-xs text-on-surface-variant">
-                        No generated PDF package available. Generate a PDF first to attach it to this email.
-                      </p>
-                    </div>
-                  )}
-                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-lg">
-                    <p className="text-xs text-blue-800">
-                      <strong>Note:</strong> Your uploaded documents will be automatically attached to this email when sent.
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="px-6 py-4 border-t border-surface-container bg-surface-container-lowest flex items-center justify-end gap-3">
-              <Button variant="outline" onClick={() => setDraftModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                onClick={handleSubmitDraft} 
-                disabled={isGenerating || isSubmitting || !draftBody.trim()}
-                loading={isSubmitting}
-              >
-                <Send className="w-4 h-4 mr-1.5" />
-                Submit Application
-              </Button>
-            </div>
-          </motion.div>
-        </div>
-      )}
+      {/* Apply Email Composition & Attachments Modal */}
+      <ApplyModal
+        isOpen={draftModalOpen}
+        onClose={() => {
+          setDraftModalOpen(false);
+          setActiveApp(null);
+        }}
+        program={activeApp?.program}
+        applicationId={activeApp?.id}
+      />
 
       {/* Validation Warning Modal */}
       {showWarningModal && pendingParams && validationReport && (

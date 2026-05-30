@@ -10,6 +10,7 @@ export interface AuthUser {
   phone?: string;
   state?: string;
   zip_code?: string;
+  profile_picture?: string;
   family_profile?: {
     household_size: number;
     num_children: number;

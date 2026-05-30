@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { usePdfGeneration } from "@/hooks/usePdfGeneration";
 import DocumentReadinessModal from "@/components/pdf/DocumentReadinessModal";
+import ApplyModal from "@/components/dashboard/ApplyModal";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
@@ -33,6 +34,8 @@ export default function BenefitsPage() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showEmails, setShowEmails] = useState(false);
+  const [applyModalOpen, setApplyModalOpen] = useState(false);
+  const [selectedProgram, setSelectedProgram] = useState<any>(null);
   const queryClient = useQueryClient();
   const router = useRouter();
 
@@ -292,14 +295,8 @@ export default function BenefitsPage() {
                         size="sm"
                         onClick={(e) => {
                           e.preventDefault();
-                          if (result.program?.id) {
-                            api.post("/api/applications", { program_id: result.program.id })
-                              .then(() => queryClient.invalidateQueries({ queryKey: ["applications"] }))
-                              .catch(console.error);
-                          }
-                          if (result.program?.application_url) {
-                            window.open(result.program.application_url, "_blank", "noopener,noreferrer");
-                          }
+                          setSelectedProgram(result.program);
+                          setApplyModalOpen(true);
                         }}
                       >
                         Apply Now
@@ -394,6 +391,15 @@ export default function BenefitsPage() {
           </motion.div>
         </div>
       )}
+      {/* Apply Email Composition & Attachments Modal */}
+      <ApplyModal
+        isOpen={applyModalOpen}
+        onClose={() => {
+          setApplyModalOpen(false);
+          setSelectedProgram(null);
+        }}
+        program={selectedProgram}
+      />
     </div>
   );
 }

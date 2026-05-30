@@ -9,6 +9,163 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
+function classifyDocumentType(fileName: string, currentType: string = 'other'): string {
+  const lowerName = fileName.toLowerCase();
+  
+  if (
+    lowerName.includes('license') || 
+    lowerName.includes('licence') || 
+    lowerName.includes('passport') || 
+    lowerName.includes('govt') || 
+    lowerName.includes('government') ||
+    /\bid\b/.test(lowerName) ||
+    /\bdl\b/.test(lowerName) ||
+    lowerName.includes('driver') ||
+    lowerName.includes('state_id') ||
+    lowerName.includes('state-id')
+  ) {
+    return 'government_id';
+  }
+  
+  if (
+    lowerName.includes('income') || 
+    lowerName.includes('paystub') || 
+    lowerName.includes('pay_stub') || 
+    lowerName.includes('pay-stub') || 
+    lowerName.includes('stub') || 
+    lowerName.includes('w2') || 
+    lowerName.includes('w-2') || 
+    lowerName.includes('salary') || 
+    lowerName.includes('earning') ||
+    lowerName.includes('payslip')
+  ) {
+    return 'proof_of_income';
+  }
+
+  if (
+    lowerName.includes('birth') || 
+    lowerName.includes('certificate') || 
+    lowerName.includes('baby') || 
+    lowerName.includes('child_cert')
+  ) {
+    return 'birth_certificate';
+  }
+
+  if (
+    lowerName.includes('lease') || 
+    lowerName.includes('rental') || 
+    lowerName.includes('rent') || 
+    lowerName.includes('tenancy')
+  ) {
+    return 'lease_agreement';
+  }
+
+  if (
+    lowerName.includes('utility') || 
+    lowerName.includes('bill') || 
+    lowerName.includes('electric') || 
+    lowerName.includes('gas') || 
+    lowerName.includes('water') || 
+    lowerName.includes('heating') || 
+    lowerName.includes('sewer')
+  ) {
+    return 'utility_bill';
+  }
+
+  if (
+    lowerName.includes('bank') || 
+    lowerName.includes('statement') || 
+    lowerName.includes('checking') || 
+    lowerName.includes('savings') ||
+    lowerName.includes('financial')
+  ) {
+    return 'bank_statement';
+  }
+
+  if (
+    lowerName.includes('medical') || 
+    lowerName.includes('health') || 
+    lowerName.includes('doctor') || 
+    lowerName.includes('disability') || 
+    lowerName.includes('clinical') ||
+    lowerName.includes('vaccin') ||
+    lowerName.includes('immuniz')
+  ) {
+    return 'medical_record';
+  }
+
+  if (
+    lowerName.includes('childcare') || 
+    lowerName.includes('provider') || 
+    lowerName.includes('nanny') || 
+    lowerName.includes('daycare') ||
+    lowerName.includes('ccdf')
+  ) {
+    return 'childcare_record';
+  }
+
+  if (
+    lowerName.includes('ssn') || 
+    lowerName.includes('social security') || 
+    lowerName.includes('social_security') || 
+    lowerName.includes('ssc')
+  ) {
+    return 'social_security_card';
+  }
+
+  if (
+    lowerName.includes('immigration') || 
+    lowerName.includes('green card') || 
+    lowerName.includes('greencard') || 
+    lowerName.includes('visa') || 
+    lowerName.includes('ead') || 
+    lowerName.includes('permanent resident')
+  ) {
+    return 'immigration_document';
+  }
+
+  if (
+    lowerName.includes('school') || 
+    lowerName.includes('enrollment') || 
+    lowerName.includes('student') || 
+    lowerName.includes('class') || 
+    lowerName.includes('transcript')
+  ) {
+    return 'school_enrollment';
+  }
+
+  if (
+    lowerName.includes('tax') || 
+    lowerName.includes('return') || 
+    lowerName.includes('1040') || 
+    lowerName.includes('irs')
+  ) {
+    return 'tax_return';
+  }
+
+  if (
+    lowerName.includes('pregnant') || 
+    lowerName.includes('pregnancy') || 
+    lowerName.includes('due date') || 
+    lowerName.includes('due_date') || 
+    lowerName.includes('ultrasound')
+  ) {
+    return 'proof_of_pregnancy';
+  }
+
+  if (
+    lowerName.includes('custody') || 
+    lowerName.includes('divorce') || 
+    lowerName.includes('guardianship') || 
+    lowerName.includes('court order') || 
+    lowerName.includes('court_order')
+  ) {
+    return 'custody_order';
+  }
+
+  return currentType;
+}
+
 export class DocumentsService {
   async listDocuments(userId: string, role: UserRole) {
     if (role === 'admin' || role === 'counselor') {
@@ -79,11 +236,16 @@ export class DocumentsService {
       );
     }
 
+    let documentType = data.document_type || 'other';
+    if (documentType === 'other') {
+      documentType = classifyDocumentType(file.originalname, documentType);
+    }
+
     const document = await prisma.document.create({
       data: {
         user_id: userId,
         application_id: data.application_id || null,
-        document_type: data.document_type,
+        document_type: documentType,
         original_file_name: file.originalname,
         display_name: file.originalname,
         file_url,

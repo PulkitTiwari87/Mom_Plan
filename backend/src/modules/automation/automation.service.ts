@@ -45,7 +45,7 @@ export class AutomationService {
    * TASK 6: Prepares a composed email draft for a specific application.
    * Finds the correct contact, generates a templated body using AI, and prepares document attachments.
    */
-  async composeApplicationEmail(applicationId: string, userId: string, attachPdf: boolean = true) {
+  async composeApplicationEmail(applicationId: string, userId: string, attachPdf: boolean = true, documentIds?: string[]) {
     const application = await prisma.application.findUnique({
       where: { id: applicationId },
       include: {
@@ -75,7 +75,20 @@ export class AutomationService {
     const contacts = this.contactCache.get(`${state}-${application.program.agency}`) || [];
     const primaryContact = application.program.contact_email || (contacts.length > 0 ? contacts[0].email : 'support@agency.gov');
 
-    // 3. Compose email via Anthropic AI (acting as OpenAI substitute as per existing arch)
+    // 3. Determine which documents to attach
+    let docsToAttach = [];
+    if (documentIds && Array.isArray(documentIds)) {
+      docsToAttach = await prisma.document.findMany({
+        where: {
+          id: { in: documentIds },
+          user_id: userId
+        }
+      });
+    } else {
+      docsToAttach = application.documents;
+    }
+
+    // 4. Compose email via Anthropic AI (acting as OpenAI substitute as per existing arch)
     const { callClaudeApi } = require('../../config/anthropic');
     const systemPrompt = `You are an automated government application assistant.
 Your task is to draft a formal, professional email to a government agency representative on behalf of an applicant.
@@ -88,7 +101,7 @@ Applicant Profile:
 - Household Size: ${application.user.family_profile.household_size}
 - Income: $${application.user.family_profile.monthly_income}/month
 - Address: ${application.user.family_profile.city}, ${application.user.state}
-- Documents Attached: ${application.documents.length > 0 ? application.documents.map(d => d.display_name).join(', ') : 'None'}
+- Documents Attached: ${docsToAttach.length > 0 ? docsToAttach.map(d => d.display_name).join(', ') : 'None'}
 
 The email should be ready to send as-is. End with "MomPlan Automations System" as the sender.`;
 
@@ -101,8 +114,8 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
       generatedBody = `Dear ${application.program.agency} Representative,\n\n`;
       generatedBody += `Please find the application submission for ${application.user.full_name}.\n`;
       generatedBody += `Program: ${application.program.name}\n\n`;
-      if (application.documents.length > 0) {
-        generatedBody += `Attached are ${application.documents.length} supporting documents.\n`;
+      if (docsToAttach.length > 0) {
+        generatedBody += `Attached are ${docsToAttach.length} supporting documents.\n`;
       }
       generatedBody += `\nThank you,\nMomPlan Automations System`;
     }
@@ -130,7 +143,7 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
           url: generatedPdf.file_url,
           mimeType: 'application/pdf',
         }] : []),
-        ...application.documents.map(doc => ({
+        ...docsToAttach.map(doc => ({
           filename: doc.display_name,
           url: doc.file_url,
           mimeType: doc.mime_type
@@ -160,13 +173,14 @@ The email should be ready to send as-is. End with "MomPlan Automations System" a
     customBody?: string,
     customSubject?: string,
     customTo?: string,
-    attachPdf: boolean = true
+    attachPdf: boolean = true,
+    documentIds?: string[]
   ) {
     console.log(`[Worker] Processing Apply Now for application: ${applicationId}`);
 
     try {
       // 1. Compose email (this will fetch contact, prepare payload, and use AI to generate email)
-      const emailData = await this.composeApplicationEmail(applicationId, userId, attachPdf);
+      const emailData = await this.composeApplicationEmail(applicationId, userId, attachPdf, documentIds);
 
       if (customBody) emailData.body = customBody;
       if (customSubject) emailData.subject = customSubject;

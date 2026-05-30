@@ -1,6 +1,5 @@
-"use client";
-
-import { useState, useRef } from "react";
+import { useState, useRef, Suspense, useEffect } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Upload, FileText, CheckCircle, XCircle, Loader2, Trash2, Eye, Clock, Edit2, Download } from "lucide-react";
@@ -10,7 +9,187 @@ import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { usePdfGeneration } from "@/hooks/usePdfGeneration";
 
-export default function DocumentsPage() {
+const DOCUMENT_TYPES = [
+  { value: "government_id", label: "Government-Issued Photo ID (Driver's License, Passport, etc.)", icon: "🪪" },
+  { value: "proof_of_income", label: "Proof of Income (Pay stubs, W-2, award letters)", icon: "💰" },
+  { value: "birth_certificate", label: "Child's Birth Certificate", icon: "👶" },
+  { value: "lease_agreement", label: "Lease / Rental Agreement", icon: "🏠" },
+  { value: "utility_bill", label: "Utility Bill (Electric, gas, water)", icon: "🔌" },
+  { value: "bank_statement", label: "Bank / Financial Account Statement", icon: "🏦" },
+  { value: "medical_record", label: "Medical Documentation", icon: "🏥" },
+  { value: "childcare_record", label: "Childcare Provider Record", icon: "🧸" },
+  { value: "social_security_card", label: "Social Security Card", icon: "💳" },
+  { value: "immigration_document", label: "Immigration / Status Document", icon: "🌐" },
+  { value: "school_enrollment", label: "School / Training Enrollment Proof", icon: "🎒" },
+  { value: "tax_return", label: "Prior Year Tax Return", icon: "📊" },
+  { value: "proof_of_pregnancy", label: "Proof of Pregnancy", icon: "🤰" },
+  { value: "custody_order", label: "Child Custody Order", icon: "⚖️" },
+  { value: "other", label: "Other Supporting Document", icon: "📄" }
+];
+
+export function classifyDocumentType(fileName: string, currentType: string = "other"): string {
+  const lowerName = fileName.toLowerCase();
+  
+  if (
+    lowerName.includes("license") || 
+    lowerName.includes("licence") || 
+    lowerName.includes("passport") || 
+    lowerName.includes("govt") || 
+    lowerName.includes("government") ||
+    /\bid\b/.test(lowerName) ||
+    /\bdl\b/.test(lowerName) ||
+    lowerName.includes("driver") ||
+    lowerName.includes("state_id") ||
+    lowerName.includes("state-id")
+  ) {
+    return "government_id";
+  }
+  
+  if (
+    lowerName.includes("income") || 
+    lowerName.includes("paystub") || 
+    lowerName.includes("pay_stub") || 
+    lowerName.includes("pay-stub") || 
+    lowerName.includes("stub") || 
+    lowerName.includes("w2") || 
+    lowerName.includes("w-2") || 
+    lowerName.includes("salary") || 
+    lowerName.includes("earning") ||
+    lowerName.includes("payslip")
+  ) {
+    return "proof_of_income";
+  }
+
+  if (
+    lowerName.includes("birth") || 
+    lowerName.includes("certificate") || 
+    lowerName.includes("baby") || 
+    lowerName.includes("child_cert")
+  ) {
+    return "birth_certificate";
+  }
+
+  if (
+    lowerName.includes("lease") || 
+    lowerName.includes("rental") || 
+    lowerName.includes("rent") || 
+    lowerName.includes("tenancy")
+  ) {
+    return "lease_agreement";
+  }
+
+  if (
+    lowerName.includes("utility") || 
+    lowerName.includes("bill") || 
+    lowerName.includes("electric") || 
+    lowerName.includes("gas") || 
+    lowerName.includes("water") || 
+    lowerName.includes("heating") || 
+    lowerName.includes("sewer")
+  ) {
+    return "utility_bill";
+  }
+
+  if (
+    lowerName.includes("bank") || 
+    lowerName.includes("statement") || 
+    lowerName.includes("checking") || 
+    lowerName.includes("savings") ||
+    lowerName.includes("financial")
+  ) {
+    return "bank_statement";
+  }
+
+  if (
+    lowerName.includes("medical") || 
+    lowerName.includes("health") || 
+    lowerName.includes("doctor") || 
+    lowerName.includes("disability") || 
+    lowerName.includes("clinical") ||
+    lowerName.includes("vaccin") ||
+    lowerName.includes("immuniz")
+  ) {
+    return "medical_record";
+  }
+
+  if (
+    lowerName.includes("childcare") || 
+    lowerName.includes("provider") || 
+    lowerName.includes("nanny") || 
+    lowerName.includes("daycare") ||
+    lowerName.includes("ccdf")
+  ) {
+    return "childcare_record";
+  }
+
+  if (
+    lowerName.includes("ssn") || 
+    lowerName.includes("social security") || 
+    lowerName.includes("social_security") || 
+    lowerName.includes("ssc")
+  ) {
+    return "social_security_card";
+  }
+
+  if (
+    lowerName.includes("immigration") || 
+    lowerName.includes("green card") || 
+    lowerName.includes("greencard") || 
+    lowerName.includes("visa") || 
+    lowerName.includes("ead") || 
+    lowerName.includes("permanent resident")
+  ) {
+    return "immigration_document";
+  }
+
+  if (
+    lowerName.includes("school") || 
+    lowerName.includes("enrollment") || 
+    lowerName.includes("student") || 
+    lowerName.includes("class") || 
+    lowerName.includes("transcript")
+  ) {
+    return "school_enrollment";
+  }
+
+  if (
+    lowerName.includes("tax") || 
+    lowerName.includes("return") || 
+    lowerName.includes("1040") || 
+    lowerName.includes("irs")
+  ) {
+    return "tax_return";
+  }
+
+  if (
+    lowerName.includes("pregnant") || 
+    lowerName.includes("pregnancy") || 
+    lowerName.includes("due date") || 
+    lowerName.includes("due_date") || 
+    lowerName.includes("ultrasound")
+  ) {
+    return "proof_of_pregnancy";
+  }
+
+  if (
+    lowerName.includes("custody") || 
+    lowerName.includes("divorce") || 
+    lowerName.includes("guardianship") || 
+    lowerName.includes("court order") || 
+    lowerName.includes("court_order")
+  ) {
+    return "custody_order";
+  }
+
+  return currentType;
+}
+
+function DocumentsContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const typeParam = searchParams.get("type");
+  const redirectParam = searchParams.get("redirect");
+
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState("");
@@ -20,6 +199,14 @@ export default function DocumentsPage() {
   const [newName, setNewName] = useState("");
   const [activeTab, setActiveTab] = useState<"uploaded" | "generated">("uploaded");
   const { viewPdf, downloadPdf, isViewing, isDownloading } = usePdfGeneration();
+  const [selectedDocType, setSelectedDocType] = useState<string>(typeParam || "government_id");
+
+  // Sync selectedDocType with query parameter when it changes
+  useEffect(() => {
+    if (typeParam) {
+      setSelectedDocType(typeParam);
+    }
+  }, [typeParam]);
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ["documents"],
@@ -44,9 +231,20 @@ export default function DocumentsPage() {
     setUploading(true);
     setUploadError("");
     setUploadProgress(0);
+
+    // Auto-classify type if currently set to 'other'
+    let docTypeToUpload = selectedDocType;
+    if (selectedDocType === "other") {
+      const detected = classifyDocumentType(file.name, "other");
+      if (detected !== "other") {
+        docTypeToUpload = detected;
+        setSelectedDocType(detected);
+      }
+    }
+
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("document_type", "other");
+    formData.append("document_type", docTypeToUpload);
     try {
       await api.post("/api/documents/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -58,6 +256,9 @@ export default function DocumentsPage() {
         },
       });
       queryClient.invalidateQueries({ queryKey: ["documents"] });
+      if (redirectParam) {
+        router.push(redirectParam);
+      }
     } catch (err: any) {
       setUploadError(err.response?.data?.error?.message || "Upload failed. Try again.");
     } finally {
@@ -97,10 +298,24 @@ export default function DocumentsPage() {
   };
 
   const docTypeIcons: Record<string, string> = {
+    government_id: "🪪",
     identity: "🪪",
+    proof_of_income: "💰",
     income: "💰",
+    lease_agreement: "🏠",
     residence: "🏠",
+    medical_record: "🏥",
     medical: "🏥",
+    birth_certificate: "👶",
+    utility_bill: "🔌",
+    bank_statement: "🏦",
+    childcare_record: "🧸",
+    social_security_card: "💳",
+    immigration_document: "🌐",
+    school_enrollment: "🎒",
+    tax_return: "📊",
+    proof_of_pregnancy: "🤰",
+    custody_order: "⚖️",
     other: "📄",
   };
 
@@ -141,6 +356,36 @@ export default function DocumentsPage() {
 
       {activeTab === "uploaded" && (
         <>
+          {/* Document Type Selector */}
+          <div className="mb-6 bg-surface-container/30 border border-outline-variant/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <label className="block text-sm font-semibold text-on-surface mb-1">
+                Select Document Type
+              </label>
+              <p className="text-xs text-on-surface-variant">
+                Choose the correct category to ensure government programs recognize this document.
+              </p>
+            </div>
+            <div className="relative min-w-[280px]">
+              <select
+                value={selectedDocType}
+                onChange={(e) => setSelectedDocType(e.target.value)}
+                className="w-full pl-4 pr-10 py-2.5 bg-white border border-outline-variant/40 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 text-sm font-medium text-on-surface appearance-none cursor-pointer"
+              >
+                {DOCUMENT_TYPES.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.icon} {type.label}
+                  </option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-on-surface-variant">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
           {/* Upload Zone */}
           <div
             className="border-2 border-dashed border-primary-200 bg-primary-50/30 rounded-2xl p-10 text-center mb-8 cursor-pointer hover:border-primary-400 hover:bg-primary-50 transition-all duration-200"
@@ -269,7 +514,7 @@ export default function DocumentsPage() {
                         </div>
                       )}
                       <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-0.5">
-                        <span className="capitalize">{doc.document_type}</span>
+                        <span className="capitalize">{doc.document_type?.replace(/_/g, ' ')}</span>
                         <span>•</span>
                         <span>{formatDate(doc.uploaded_at)}</span>
                       </div>
@@ -357,5 +602,17 @@ export default function DocumentsPage() {
         )
       )}
     </div>
+  );
+}
+
+export default function DocumentsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+      </div>
+    }>
+      <DocumentsContent />
+    </Suspense>
   );
 }

@@ -33,6 +33,26 @@ const CATEGORIES = [
   'Utilities'
 ];
 
+const US_STATES = [
+  { value: "AL", label: "Alabama" }, { value: "AK", label: "Alaska" }, { value: "AZ", label: "Arizona" },
+  { value: "AR", label: "Arkansas" }, { value: "CA", label: "California" }, { value: "CO", label: "Colorado" },
+  { value: "CT", label: "Connecticut" }, { value: "DE", label: "Delaware" }, { value: "FL", label: "Florida" },
+  { value: "GA", label: "Georgia" }, { value: "HI", label: "Hawaii" }, { value: "ID", label: "Idaho" },
+  { value: "IL", label: "Illinois" }, { value: "IN", label: "Indiana" }, { value: "IA", label: "Iowa" },
+  { value: "KS", label: "Kansas" }, { value: "KY", label: "Kentucky" }, { value: "LA", label: "Louisiana" },
+  { value: "ME", label: "Maine" }, { value: "MD", label: "Maryland" }, { value: "MA", label: "Massachusetts" },
+  { value: "MI", label: "Michigan" }, { value: "MN", label: "Minnesota" }, { value: "MS", label: "Mississippi" },
+  { value: "MO", label: "Missouri" }, { value: "MT", label: "Montana" }, { value: "NE", label: "Nebraska" },
+  { value: "NV", label: "Nevada" }, { value: "NH", label: "New Hampshire" }, { value: "NJ", label: "New Jersey" },
+  { value: "NM", label: "New Mexico" }, { value: "NY", label: "New York" }, { value: "NC", label: "North Carolina" },
+  { value: "ND", label: "North Dakota" }, { value: "OH", label: "Ohio" }, { value: "OK", label: "Oklahoma" },
+  { value: "OR", label: "Oregon" }, { value: "PA", label: "Pennsylvania" }, { value: "RI", label: "Rhode Island" },
+  { value: "SC", label: "South Carolina" }, { value: "SD", label: "South Dakota" }, { value: "TN", label: "Tennessee" },
+  { value: "TX", label: "Texas" }, { value: "UT", label: "Utah" }, { value: "VT", label: "Vermont" },
+  { value: "VA", label: "Virginia" }, { value: "WA", label: "Washington" }, { value: "WV", label: "West Virginia" },
+  { value: "WI", label: "Wisconsin" }, { value: "WY", label: "Wyoming" },
+];
+
 export default function BrowsePrograms() {
   const [programs, setPrograms] = useState<BenefitProgram[]>([]);
   const [filteredPrograms, setFilteredPrograms] = useState<BenefitProgram[]>([]);
@@ -41,10 +61,11 @@ export default function BrowsePrograms() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedProgram, setSelectedProgram] = useState<BenefitProgram | null>(null);
   const [showEmails, setShowEmails] = useState(false);
+  const [selectedState, setSelectedState] = useState('All');
 
   useEffect(() => {
     fetchPrograms();
-  }, []);
+  }, [selectedState]);
 
   useEffect(() => {
     filterPrograms();
@@ -52,7 +73,9 @@ export default function BrowsePrograms() {
 
   const fetchPrograms = async () => {
     try {
-      const response = await api.get('/api/programs');
+      setLoading(true);
+      const params = selectedState && selectedState !== 'All' ? { state: selectedState } : {};
+      const response = await api.get('/api/programs', { params });
       if (response.data.success) {
         setPrograms(response.data.data);
       }
@@ -127,6 +150,25 @@ export default function BrowsePrograms() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+          </div>
+          <div className="relative w-full md:w-56 shrink-0">
+            <select
+              value={selectedState}
+              onChange={(e) => setSelectedState(e.target.value)}
+              className="w-full px-4 py-3 bg-surface-container-lowest border border-outline-variant/30 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500/20 transition-all text-on-surface font-semibold text-sm appearance-none cursor-pointer pr-10"
+            >
+              <option value="All">All States (Federal)</option>
+              {US_STATES.map((state) => (
+                <option key={state.value} value={state.value}>
+                  {state.label}
+                </option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-500">
+              <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+              </svg>
+            </div>
           </div>
           <div className="flex gap-2 items-center overflow-x-auto pb-2 md:pb-0 w-full md:w-auto scrollbar-hide">
             {CATEGORIES.map((cat) => (

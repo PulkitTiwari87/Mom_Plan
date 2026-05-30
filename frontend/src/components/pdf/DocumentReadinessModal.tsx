@@ -265,7 +265,10 @@ export default function DocumentReadinessModal({
                         )}
                       </div>
                       <button
-                        onClick={handleUploadNow}
+                        onClick={() => {
+                          onClose();
+                          router.push(`/dashboard/documents?type=${docType}&redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
+                        }}
                         className="self-start sm:self-center shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-red-600 hover:bg-red-700 text-white shadow-sm transition-all duration-200 hover:scale-[1.02]"
                       >
                         <Upload className="w-3.5 h-3.5" />
@@ -353,7 +356,15 @@ export default function DocumentReadinessModal({
           </Button>
           <Button
             variant="secondary"
-            onClick={handleUploadNow}
+            onClick={() => {
+              onClose();
+              const firstMissingDoc = missing_required_documents[0] || missing_optional_documents[0] || "";
+              const typeQuery = firstMissingDoc ? `?type=${firstMissingDoc}` : "";
+              const redirectQuery = typeQuery 
+                ? `&redirect=${encodeURIComponent(window.location.pathname + window.location.search)}` 
+                : `?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+              router.push(`/dashboard/documents${typeQuery}${redirectQuery}`);
+            }}
             className="w-full sm:w-auto order-1 sm:order-2 flex items-center justify-center gap-1.5"
           >
             Upload Documents First

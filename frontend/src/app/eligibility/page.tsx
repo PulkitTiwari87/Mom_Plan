@@ -675,7 +675,7 @@ export default function EligibilityPage() {
                       <FieldLabel sub="Used only for identity verification. Never stored or shared.">
                         Last 4 digits of your Social Security Number
                       </FieldLabel>
-                      <Input placeholder="••••" value={formData.ssn_last_four} onChange={(v) => set("ssn_last_four", v.replace(/\D/g, "").slice(0, 4))} maxLength={4} inputMode="numeric" />
+                      <Input placeholder="••••" type="password" value={formData.ssn_last_four} onChange={(v) => set("ssn_last_four", v.replace(/\D/g, "").slice(0, 4))} maxLength={4} inputMode="numeric" />
                     </div>
 
                     <div>

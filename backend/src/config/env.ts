@@ -22,6 +22,8 @@ const envSchema = z.object({
   // ─── Auth ──────────────────────────────────────────────────────────
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters'),
+  SUPABASE_URL: z.string().url('SUPABASE_URL must be a valid URL').optional(),
+  SUPABASE_ANON_KEY: z.string().optional(),
 
   // ─── External APIs (optional in dev — services will mock gracefully) ─
   ANTHROPIC_API_KEY: z.string().default(''),

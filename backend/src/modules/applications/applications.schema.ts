@@ -37,5 +37,7 @@ export const applyApplicationSchema = z.object({
     body: z.string().optional(),
     to: z.string().email().optional(),
     attach_pdf: z.boolean().optional(),
+    document_ids: z.array(z.string()).optional(),
   }),
 });
+
