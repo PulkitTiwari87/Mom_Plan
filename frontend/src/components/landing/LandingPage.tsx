@@ -17,6 +17,10 @@ import {
   TrendingUp,
   Heart,
   ChevronRight,
+  FileText,
+  Check,
+  Sparkles,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
@@ -30,14 +34,14 @@ const fadeUp = {
   }),
 };
 
-// Static icon color classes — keep explicit for Tailwind purge and hydration safety
+// Static icon color classes themed to match the design system
 const featureIconClasses = [
-  "bg-indigo-50 text-indigo-600",
-  "bg-violet-50 text-violet-600",
+  "bg-primary-50 text-primary-600",
+  "bg-secondary-50 text-secondary-600",
   "bg-emerald-50 text-emerald-600",
-  "bg-orange-50 text-orange-600",
+  "bg-amber-50 text-amber-600",
   "bg-blue-50 text-blue-600",
-  "bg-purple-50 text-purple-600",
+  "bg-primary-100 text-primary-700",
 ];
 
 const features = [
@@ -448,6 +452,210 @@ export default function LandingPage() {
               <ArrowRight className="w-5 h-5" />
             </PrimaryLink>
           </motion.div>
+        </div>
+      </section>
+
+      {/* ── Essential Programs Preview ── */}
+      <section id="programs-preview" className="py-24 bg-white border-y border-outline-variant/10 relative overflow-hidden">
+        <div className="absolute top-1/2 left-0 w-96 h-96 bg-primary-100/30 rounded-full blur-3xl pointer-events-none -translate-y-1/2" />
+        <div className="container-max section-padding relative">
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary-50 border border-secondary-200 text-secondary-700 text-sm font-medium mb-6">
+              <Sparkles className="w-3.5 h-3.5" />
+              Benefit Directory Preview
+            </div>
+            <h2 className="font-display font-bold text-4xl lg:text-5xl text-on-surface mb-4">
+              Explore <span className="text-gradient">Essential Programs</span>
+            </h2>
+            <p className="text-lg text-on-surface-variant max-w-2xl mx-auto">
+              Personalized support for every stage of your family&apos;s journey. Discover what you qualify for.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-12">
+            {[
+              {
+                title: "SNAP (Food Stamps)",
+                category: "Food & Nutrition",
+                desc: "Monthly benefits for fresh groceries at participating retail stores and farmers markets.",
+                value: "Up to $973/mo",
+                tagColor: "bg-emerald-50 text-emerald-700 border-emerald-200",
+              },
+              {
+                title: "WIC Nutrition Program",
+                category: "Healthcare & Food",
+                desc: "Special supplemental food, healthcare referrals, and nutrition education for mothers and babies.",
+                value: "Up to $150/mo",
+                tagColor: "bg-blue-50 text-blue-700 border-blue-200",
+              },
+              {
+                title: "Childcare Assistance (CCAP)",
+                category: "Family Support",
+                desc: "Financial assistance to help cover the cost of licensed childcare while working or studying.",
+                value: "Avg. $600/mo saved",
+                tagColor: "bg-primary-50 text-primary-700 border-primary-200",
+              },
+            ].map((prog, i) => (
+              <motion.div
+                key={prog.title}
+                variants={fadeUp}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true }}
+                custom={i * 0.1}
+                className="group relative"
+              >
+                <div className="absolute inset-0 bg-gradient-primary rounded-card opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm pointer-events-none" />
+                <Card hover className="h-full relative z-10 flex flex-col justify-between bg-white border border-outline-variant/30">
+                  <div>
+                    <div className="flex justify-between items-start mb-4">
+                      <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${prog.tagColor}`}>
+                        {prog.category}
+                      </span>
+                      <span className="text-sm font-bold text-gradient">{prog.value}</span>
+                    </div>
+                    <h3 className="font-display font-semibold text-xl text-on-surface mb-2 group-hover:text-primary-600 transition-colors duration-200">
+                      {prog.title}
+                    </h3>
+                    <p className="text-sm text-on-surface-variant leading-relaxed mb-6">
+                      {prog.desc}
+                    </p>
+                  </div>
+                  <Link
+                    href="/programs"
+                    className="inline-flex items-center gap-1 text-sm font-semibold text-primary-500 hover:text-primary-700 transition-colors duration-200"
+                  >
+                    Explore program details
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                  </Link>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <Link
+              href="/programs"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-lg text-sm font-semibold text-primary-500 bg-primary-50 hover:bg-primary-100 transition-all duration-200"
+            >
+              Browse All Programs
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── Document Checklist Library ── */}
+      <section id="documents-preview" className="py-24 bg-gradient-hero relative overflow-hidden">
+        <div className="absolute inset-0 bg-primary-50/20 pointer-events-none" />
+        <div className="container-max section-padding relative">
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            {/* Left Content */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="lg:col-span-5"
+            >
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary-50 border border-primary-200 text-primary-700 text-sm font-medium mb-6">
+                <FileText className="w-3.5 h-3.5" />
+                Document Checklist
+              </div>
+              <h2 className="font-display font-bold text-4xl lg:text-5xl text-on-surface mb-6">
+                Ready Your <span className="text-gradient">Documentation</span>
+              </h2>
+              <p className="text-lg text-on-surface-variant leading-relaxed mb-6">
+                A curated library of everything you need for a successful application. Securely prepare your files beforehand to submit claims with confidence.
+              </p>
+              <p className="text-sm text-on-surface-variant leading-relaxed mb-8">
+                Upload your files once to your encrypted MomPlan locker. We automatically map and securely pre-fill applications across federal, state, and county assistance plans.
+              </p>
+              <Link
+                href="/documents"
+                className="inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3.5 text-sm font-semibold text-white bg-gradient-primary shadow-primary hover:shadow-primary-lg hover:-translate-y-0.5 transition-all duration-200"
+              >
+                Access Document Library
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+            </motion.div>
+
+            {/* Right Card / Interactive Preview */}
+            <motion.div
+              variants={fadeUp}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              className="lg:col-span-7"
+            >
+              <div className="glass-card p-6 md:p-8 hover:shadow-glass-lg transition-shadow duration-300">
+                <div className="flex justify-between items-center mb-6 border-b border-outline-variant/20 pb-4">
+                  <div>
+                    <h3 className="font-display font-semibold text-lg text-on-surface">Core Verification Checklist</h3>
+                    <p className="text-xs text-on-surface-variant">Recommended files for most benefits</p>
+                  </div>
+                  <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-primary-50 text-primary-700">
+                    Required for 85% of programs
+                  </span>
+                </div>
+
+                <div className="space-y-4">
+                  {[
+                    {
+                      name: "Proof of Identity",
+                      details: "Driver's license, Passport, or Birth Certificate",
+                      status: "Essential",
+                    },
+                    {
+                      name: "Verification of Income",
+                      details: "Paystubs (last 30 days), W2, or Tax Returns",
+                      status: "Essential",
+                    },
+                    {
+                      name: "Residence Documents",
+                      details: "Utility bills, Lease Agreement, or Mortgage statement",
+                      status: "Highly Recommended",
+                    },
+                    {
+                      name: "Household Verification",
+                      details: "Children's birth certificates or school registration records",
+                      status: "For Family Programs",
+                    },
+                  ].map((doc, idx) => (
+                    <div
+                      key={doc.name}
+                      className="flex items-start gap-4 p-4 rounded-xl bg-white/50 border border-outline-variant/10 hover:bg-white hover:border-primary-200 transition-all duration-200"
+                    >
+                      <div className="w-5 h-5 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 mt-0.5">
+                        <Check className="w-3 h-3" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="font-semibold text-sm text-on-surface">{doc.name}</span>
+                          <span className="text-[10px] uppercase font-bold text-on-surface-variant tracking-wider">
+                            {doc.status}
+                          </span>
+                        </div>
+                        <p className="text-xs text-on-surface-variant leading-relaxed">{doc.details}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         </div>
       </section>
 

@@ -126,7 +126,7 @@ export default function BrowsePrograms() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="text-lg text-indigo-100 max-w-2xl"
+            className="text-lg text-primary-100 max-w-2xl"
           >
             Discover and browse government assistance programs. We've compiled the most critical resources for mothers and families in one place.
           </motion.p>
@@ -233,7 +233,7 @@ export default function BrowsePrograms() {
                     
                     <div className="bg-slate-50 rounded-xl p-4 mb-6">
                       <p className="text-xs text-slate-500 uppercase font-bold tracking-widest mb-1">Benefit</p>
-                      <p className="text-lg font-bold text-indigo-600">{program.benefit}</p>
+                      <p className="text-lg font-bold text-primary-600">{program.benefit}</p>
                       {showEmails && program.contact_email && (
                         <div className="mt-3 pt-3 border-t border-slate-200/60 flex items-center justify-between text-xs text-slate-500">
                           <span className="font-semibold">Contact Email:</span>
@@ -372,13 +372,13 @@ export default function BrowsePrograms() {
                   )}
 
                   {/* Pro Tip */}
-                  <div className="p-6 bg-indigo-50 rounded-3xl border border-indigo-100 flex gap-4">
+                  <div className="p-6 bg-primary-50 rounded-3xl border border-primary-100 flex gap-4">
                     <div className="bg-white p-2 rounded-xl shadow-sm self-start">
-                      <Info className="w-5 h-5 text-indigo-600" />
+                      <Info className="w-5 h-5 text-primary-600" />
                     </div>
                     <div>
-                      <h5 className="font-bold text-indigo-900 mb-1">Apply via Scan</h5>
-                      <p className="text-sm text-indigo-700 leading-relaxed">
+                      <h5 className="font-bold text-primary-900 mb-1">Apply via Scan</h5>
+                      <p className="text-sm text-primary-700 leading-relaxed">
                         Don't want to check manually? Use our <strong>AI Eligibility Scan</strong> to automatically determine your qualification for this and other programs in seconds.
                       </p>
                     </div>
