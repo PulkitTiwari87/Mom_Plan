@@ -53,7 +53,7 @@ const US_STATES = [
 ];
 
 const SECTIONS = [
-  { id: 1, label: "Personal Info",  icon: User,       emoji: "🧍", color: "from-violet-500 to-indigo-500" },
+  { id: 1, label: "Personal Info",  icon: User,       emoji: "🧍", color: "from-primary to-secondary" },
   { id: 2, label: "Income & Assets", icon: DollarSign, emoji: "💰", color: "from-emerald-500 to-teal-500" },
   { id: 3, label: "Your Family",    icon: Users,       emoji: "👨‍👩‍👧", color: "from-pink-500 to-rose-500" },
   { id: 4, label: "Housing",        icon: Home,        emoji: "🏠", color: "from-amber-500 to-orange-500" },
@@ -441,19 +441,18 @@ export default function EligibilityPage() {
       setIsScanning(false);
     }
   };
-
   const currentSection = SECTIONS.find(s => s.id === step)!;
 
   // ─── Loading ───────────────────────────────────────────
   if (isScanning) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-violet-50 via-white to-indigo-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
         <div className="text-center max-w-md">
           <div className="relative mb-8">
-            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-2xl mx-auto">
+            <div className="w-24 h-24 rounded-3xl bg-gradient-primary flex items-center justify-center shadow-primary-lg mx-auto">
               <Loader2 className="w-12 h-12 text-white animate-spin" />
             </div>
-            <div className="absolute inset-0 rounded-3xl bg-indigo-400/20 blur-2xl animate-pulse" />
+            <div className="absolute inset-0 rounded-3xl bg-primary-400/20 blur-2xl animate-pulse" />
           </div>
           <h2 className="font-display font-bold text-3xl text-on-surface mb-3">MomPlan Smart Scan</h2>
           <p className="text-on-surface-variant text-base mb-6 leading-relaxed">
@@ -461,7 +460,7 @@ export default function EligibilityPage() {
           </p>
           <div className="flex justify-center gap-1.5">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="w-3 h-3 rounded-full bg-indigo-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+              <div key={i} className="w-3 h-3 rounded-full bg-primary animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
             ))}
           </div>
         </div>
@@ -514,7 +513,7 @@ export default function EligibilityPage() {
               </Button>
             ) : (
               <>
-                <Button size="lg" onClick={() => router.push("/register")} className="bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold px-8 shadow-lg">
+                <Button size="lg" onClick={() => router.push("/register")} className="bg-gradient-primary text-white font-bold px-8 shadow-primary">
                   Save My Match Profile <ArrowRight className="w-5 h-5 ml-1" />
                 </Button>
                 <Button variant="ghost" size="lg" onClick={() => router.push("/login")} className="hover:bg-surface-container">
@@ -530,15 +529,15 @@ export default function EligibilityPage() {
 
   // ─── Main Form ─────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-indigo-50/40 pt-6 pb-20">
+    <div className="min-h-screen bg-surface pt-6 pb-20">
       {/* Header */}
       <div className="max-w-2xl mx-auto px-4 mb-4">
         <div className="flex items-center justify-between mb-2">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center shadow-md">
+            <div className="w-8 h-8 rounded-xl bg-gradient-primary flex items-center justify-center shadow-primary">
               <Heart className="w-4 h-4 text-white" fill="white" />
             </div>
-            <span className="font-display font-black text-lg text-on-surface">Mom<span className="text-violet-600">Plan</span></span>
+            <span className="font-display font-bold text-lg text-on-surface">Mom<span className="text-primary">Plan</span></span>
           </Link>
           <span className="text-xs font-bold text-on-surface-variant bg-white px-3 py-1.5 rounded-full border border-outline-variant/30 shadow-sm">
             Section {step} of {SECTIONS.length}
@@ -548,7 +547,7 @@ export default function EligibilityPage() {
         {/* Overall progress bar */}
         <div className="w-full h-1.5 bg-outline-variant/20 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-violet-500 to-indigo-600 rounded-full"
+            className="h-full bg-gradient-primary rounded-full"
             animate={{ width: `${(step / SECTIONS.length) * 100}%` }}
             transition={{ duration: 0.4 }}
           />
@@ -569,19 +568,19 @@ export default function EligibilityPage() {
                 onClick={() => setStep(s.id)}
                 className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border transition-all whitespace-nowrap shrink-0 min-w-[72px] ${
                   isActive
-                    ? "bg-white border-violet-300 shadow-md text-violet-700"
+                    ? "bg-white border-primary-300 shadow-md text-primary"
                     : isDone
-                    ? "bg-violet-50 border-violet-200 text-violet-500"
+                    ? "bg-primary-50 border-primary-200 text-primary-500"
                     : "bg-white/60 border-outline-variant/30 text-on-surface-variant hover:bg-white hover:border-outline-variant"
                 }`}
               >
                 <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${
-                  isActive ? "bg-gradient-to-br from-violet-500 to-indigo-600 text-white shadow-sm" :
-                  isDone ? "bg-violet-200 text-violet-600" : "bg-surface-container text-on-surface-variant"
+                  isActive ? "bg-gradient-primary text-white shadow-sm" :
+                  isDone ? "bg-primary-100 text-primary" : "bg-surface-container text-on-surface-variant"
                 }`}>
                   {isDone ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
                 </div>
-                <span className={`text-[10px] font-bold leading-tight text-center ${isActive ? "text-violet-700" : ""}`}>
+                <span className={`text-[10px] font-bold leading-tight text-center ${isActive ? "text-primary" : ""}`}>
                   {s.label}
                 </span>
               </button>
@@ -1037,12 +1036,12 @@ export default function EligibilityPage() {
                             onClick={() => set("urgency", opt.id)}
                             className={`w-full p-3.5 rounded-xl border text-left transition-all ${
                               formData.urgency === opt.id
-                                ? "bg-violet-50 border-violet-500 text-violet-900"
+                                ? "bg-primary-50 border-primary-500 text-primary-900"
                                 : "bg-white border-outline-variant/40 text-on-surface hover:bg-surface-container"
                             }`}
                           >
                             <div className="font-bold text-sm">{opt.label}</div>
-                            <div className={`text-xs mt-0.5 ${formData.urgency === opt.id ? "text-violet-700" : "text-on-surface-variant"}`}>{opt.desc}</div>
+                            <div className={`text-xs mt-0.5 ${formData.urgency === opt.id ? "text-primary" : "text-on-surface-variant"}`}>{opt.desc}</div>
                           </button>
                         ))}
                       </div>
@@ -1082,7 +1081,7 @@ export default function EligibilityPage() {
 
                 {step < SECTIONS.length ? (
                   <button type="button" onClick={() => setStep(s => s + 1)}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                    className="flex items-center gap-2 px-6 py-2.5 bg-gradient-primary text-white font-bold text-sm rounded-xl shadow-primary hover:shadow-primary-lg hover:-translate-y-0.5 transition-all">
                     Next <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (

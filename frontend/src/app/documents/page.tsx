@@ -15,6 +15,8 @@ import {
   Shield,
   Star,
 } from "lucide-react";
+import { Navbar } from "@/components/layout/Navbar";
+import { Footer } from "@/components/layout/Footer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DocumentItem {
@@ -375,289 +377,293 @@ export default function RequiredDocumentsPage() {
   }, [search, selectedLevel]);
 
   return (
-    <div className="min-h-screen bg-[#f8f7fc]">
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-violet-600 via-indigo-600 to-purple-700 text-white pt-28 pb-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold mb-5 border border-white/20">
-            <FileText className="w-3.5 h-3.5" />
-            Documents checklist
-          </div>
-          <h1 className="font-display font-bold text-4xl md:text-5xl mb-4 leading-tight">
-            Required Documents by Scheme
-          </h1>
-          <p className="text-indigo-100 text-base max-w-2xl leading-relaxed">
-            Pick your state to see the schemes available to you, who qualifies, and exactly which documents you'll need — clearly marked as required or optional.
-          </p>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="max-w-5xl mx-auto px-4 -mt-8">
-        <div className="bg-white rounded-2xl shadow-xl border border-outline-variant/20 p-4 flex flex-col sm:flex-row gap-3 items-stretch">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/60 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search scheme or document..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none text-sm text-on-surface transition-all"
-            />
-          </div>
-          {/* State selector */}
-          <div className="relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 w-4 h-4" />
-            <select
-              value={selectedState}
-              onChange={(e) => setSelectedState(e.target.value)}
-              className="pl-9 pr-8 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest focus:border-violet-400 focus:ring-2 focus:ring-violet-100 outline-none text-sm text-on-surface transition-all appearance-none min-w-[160px]"
-            >
-              {US_STATES_LIST.map((s) => <option key={s}>{s}</option>)}
-            </select>
+    <>
+      <Navbar />
+      <div className="min-h-screen bg-surface pb-20 pt-16">
+        {/* Hero */}
+        <div className="bg-gradient-primary text-white pt-24 pb-16 px-6">
+          <div className="max-w-5xl mx-auto">
+            <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm px-3 py-1.5 rounded-full text-xs font-bold mb-5 border border-white/20">
+              <FileText className="w-3.5 h-3.5" />
+              Documents checklist
+            </div>
+            <h1 className="font-display font-bold text-4xl md:text-5xl mb-4 leading-tight">
+              Required Documents by Scheme
+            </h1>
+            <p className="text-indigo-100 text-base max-w-2xl leading-relaxed">
+              Pick your state to see the schemes available to you, who qualifies, and exactly which documents you'll need — clearly marked as required or optional.
+            </p>
           </div>
         </div>
 
-        {/* Level tabs */}
-        <div className="flex gap-2 mt-4 mb-6">
-          {LEVEL_TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setSelectedLevel(tab)}
-              className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
-                selectedLevel === tab
-                  ? "bg-violet-600 border-violet-600 text-white shadow-sm"
-                  : "bg-white border-outline-variant/40 text-on-surface-variant hover:border-violet-300"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-          <span className="ml-auto text-sm text-on-surface-variant self-center">
-            Showing {filtered.length} schemes
-          </span>
-        </div>
+        {/* Filters */}
+        <div className="max-w-5xl mx-auto px-4 -mt-8">
+          <div className="bg-white rounded-2xl shadow-xl border border-outline-variant/20 p-4 flex flex-col sm:flex-row gap-3 items-stretch">
+            {/* Search */}
+            <div className="relative flex-1">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/60 w-4 h-4" />
+              <input
+                type="text"
+                placeholder="Search scheme or document..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none text-sm text-on-surface transition-all"
+              />
+            </div>
+            {/* State selector */}
+            <div className="relative">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 w-4 h-4" />
+              <select
+                value={selectedState}
+                onChange={(e) => setSelectedState(e.target.value)}
+                className="pl-9 pr-8 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest focus:border-primary-400 focus:ring-2 focus:ring-primary-100 outline-none text-sm text-on-surface transition-all appearance-none min-w-[160px]"
+              >
+                {US_STATES_LIST.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
 
-        {/* Table Header */}
-        <div className="hidden md:grid grid-cols-[2fr_0.7fr_1.5fr_2fr_0.5fr] gap-4 px-4 py-2 text-xs font-bold text-on-surface-variant uppercase tracking-wider border-b border-outline-variant/30 mb-2">
-          <span>Scheme</span>
-          <span>Level</span>
-          <span>Eligibility</span>
-          <span>Required Documents</span>
-          <span>Link</span>
-        </div>
+          {/* Level tabs */}
+          <div className="flex gap-2 mt-4 mb-6">
+            {LEVEL_TABS.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setSelectedLevel(tab)}
+                className={`px-4 py-1.5 rounded-full text-sm font-semibold border transition-all ${
+                  selectedLevel === tab
+                    ? "bg-primary border-primary text-white shadow-primary"
+                    : "bg-surface-container-lowest border-outline-variant/30 text-on-surface-variant hover:bg-surface-container"
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+            <span className="ml-auto text-sm text-on-surface-variant self-center">
+              Showing {filtered.length} schemes
+            </span>
+          </div>
 
-        {/* Programs List */}
-        <div className="space-y-3 pb-20">
-          <AnimatePresence>
-            {filtered.map((program, idx) => {
-              const isExpanded = expandedId === program.id;
-              return (
-                <motion.div
-                  key={program.id}
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -8 }}
-                  transition={{ delay: idx * 0.03 }}
-                  className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden"
-                >
-                  {/* Main row */}
-                  <div className="md:grid md:grid-cols-[2fr_0.7fr_1.5fr_2fr_0.5fr] gap-4 p-4 items-start">
-                    {/* Scheme */}
-                    <div>
-                      <div className="flex items-start gap-2 flex-wrap mb-1.5">
+          {/* Table Header */}
+          <div className="hidden md:grid grid-cols-[2fr_0.7fr_1.5fr_2fr_0.5fr] gap-4 px-4 py-2 text-xs font-bold text-on-surface-variant uppercase tracking-wider border-b border-outline-variant/30 mb-2">
+            <span>Scheme</span>
+            <span>Level</span>
+            <span>Eligibility</span>
+            <span>Required Documents</span>
+            <span>Link</span>
+          </div>
+
+          {/* Programs List */}
+          <div className="space-y-3 pb-20">
+            <AnimatePresence>
+              {filtered.map((program, idx) => {
+                const isExpanded = expandedId === program.id;
+                return (
+                  <motion.div
+                    key={program.id}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="bg-white rounded-2xl border border-outline-variant/20 shadow-sm overflow-hidden"
+                  >
+                    {/* Main row */}
+                    <div className="md:grid md:grid-cols-[2fr_0.7fr_1.5fr_2fr_0.5fr] gap-4 p-4 items-start">
+                      {/* Scheme */}
+                      <div>
+                        <div className="flex items-start gap-2 flex-wrap mb-1.5">
+                          <button
+                            onClick={() => setExpandedId(isExpanded ? null : program.id)}
+                            className="font-bold text-sm text-on-surface hover:text-primary transition-colors text-left"
+                          >
+                            {program.name}
+                          </button>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${program.categoryColor}`}>
+                            {program.category}
+                          </span>
+                        </div>
+                        <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2">{program.description}</p>
                         <button
                           onClick={() => setExpandedId(isExpanded ? null : program.id)}
-                          className="font-bold text-sm text-on-surface hover:text-violet-700 transition-colors text-left"
+                          className="mt-2 flex items-center gap-1 text-xs text-primary hover:text-primary-600 font-medium md:hidden"
                         >
-                          {program.name}
+                          {isExpanded ? "Show less" : "Show details"}
+                          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                         </button>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${program.categoryColor}`}>
-                          {program.category}
+                      </div>
+
+                      {/* Level */}
+                      <div className="hidden md:block">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${program.level === "Federal" ? "bg-primary-50 text-primary-700 border border-primary-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"}`}>
+                          {program.level}
                         </span>
                       </div>
-                      <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2">{program.description}</p>
-                      <button
-                        onClick={() => setExpandedId(isExpanded ? null : program.id)}
-                        className="mt-2 flex items-center gap-1 text-xs text-violet-600 hover:text-violet-800 font-medium md:hidden"
-                      >
-                        {isExpanded ? "Show less" : "Show details"}
-                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
-                      </button>
-                    </div>
 
-                    {/* Level */}
-                    <div className="hidden md:block">
-                      <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${program.level === "Federal" ? "bg-indigo-50 text-indigo-700 border border-indigo-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"}`}>
-                        {program.level}
-                      </span>
-                    </div>
-
-                    {/* Eligibility */}
-                    <div className="hidden md:block space-y-1">
-                      {program.eligibility.map((item, i) => (
-                        <div key={i} className="flex items-start gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                          <span className="text-xs text-on-surface-variant leading-snug">{item}</span>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Required Docs */}
-                    <div className="hidden md:block">
-                      <div className="mb-2">
-                        <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider">
-                          MANDATORY ({program.mandatoryDocs.length})
-                        </span>
-                        <ul className="mt-1 space-y-0.5">
-                          {program.mandatoryDocs.map((doc, i) => (
-                            <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface">
-                              <span className="text-rose-400 mt-0.5 shrink-0">•</span>
-                              <span>
-                                {doc.name}
-                                {doc.note && <span className="text-on-surface-variant"> ({doc.note})</span>}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
+                      {/* Eligibility */}
+                      <div className="hidden md:block space-y-1">
+                        {program.eligibility.map((item, i) => (
+                          <div key={i} className="flex items-start gap-1.5">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                            <span className="text-xs text-on-surface-variant leading-snug">{item}</span>
+                          </div>
+                        ))}
                       </div>
-                      {program.optionalDocs.length > 0 && (
-                        <div>
-                          <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
-                            OPTIONAL ({program.optionalDocs.length})
+
+                      {/* Required Docs */}
+                      <div className="hidden md:block">
+                        <div className="mb-2">
+                          <span className="text-[10px] font-black text-rose-600 uppercase tracking-wider">
+                            MANDATORY ({program.mandatoryDocs.length})
                           </span>
                           <ul className="mt-1 space-y-0.5">
-                            {program.optionalDocs.map((doc, i) => (
-                              <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface-variant">
-                                <span className="mt-0.5 shrink-0">•</span>
+                            {program.mandatoryDocs.map((doc, i) => (
+                              <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface">
+                                <span className="text-rose-400 mt-0.5 shrink-0">•</span>
                                 <span>
                                   {doc.name}
-                                  {doc.note && <span> ({doc.note})</span>}
+                                  {doc.note && <span className="text-on-surface-variant"> ({doc.note})</span>}
                                 </span>
                               </li>
                             ))}
                           </ul>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Link */}
-                    <div className="hidden md:flex items-start justify-center pt-1">
-                      <a
-                        href={program.officialUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex flex-col items-center gap-1 text-violet-600 hover:text-violet-800 transition-colors group"
-                        title="Official site"
-                      >
-                        <div className="w-8 h-8 rounded-lg bg-violet-50 group-hover:bg-violet-100 flex items-center justify-center transition-colors">
-                          <ExternalLink className="w-4 h-4" />
-                        </div>
-                        <span className="text-[10px] font-bold">Official site</span>
-                      </a>
-                    </div>
-                  </div>
-
-                  {/* Expanded mobile content */}
-                  <AnimatePresence>
-                    {isExpanded && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.25 }}
-                        className="md:hidden overflow-hidden"
-                      >
-                        <div className="px-4 pb-4 border-t border-outline-variant/10 pt-4 space-y-4">
-                          {/* Level */}
-                          <div className="flex items-center gap-2">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${program.level === "Federal" ? "bg-indigo-50 text-indigo-700 border border-indigo-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"}`}>
-                              {program.level}
+                        {program.optionalDocs.length > 0 && (
+                          <div>
+                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                              OPTIONAL ({program.optionalDocs.length})
                             </span>
-                          </div>
-                          {/* Eligibility */}
-                          <div>
-                            <div className="text-[10px] font-black text-on-surface-variant uppercase tracking-wider mb-2">Eligibility</div>
-                            <div className="space-y-1">
-                              {program.eligibility.map((item, i) => (
-                                <div key={i} className="flex items-start gap-1.5">
-                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                                  <span className="text-xs text-on-surface-variant">{item}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          {/* Mandatory docs */}
-                          <div>
-                            <div className="text-[10px] font-black text-rose-600 uppercase tracking-wider mb-2">MANDATORY ({program.mandatoryDocs.length})</div>
-                            <ul className="space-y-1">
-                              {program.mandatoryDocs.map((doc, i) => (
-                                <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface">
-                                  <span className="text-rose-400 mt-0.5 shrink-0">•</span>
-                                  <span>{doc.name}{doc.note && <span className="text-on-surface-variant"> ({doc.note})</span>}</span>
+                            <ul className="mt-1 space-y-0.5">
+                              {program.optionalDocs.map((doc, i) => (
+                                <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface-variant">
+                                  <span className="mt-0.5 shrink-0">•</span>
+                                  <span>
+                                    {doc.name}
+                                    {doc.note && <span> ({doc.note})</span>}
+                                  </span>
                                 </li>
                               ))}
                             </ul>
                           </div>
-                          {/* Optional docs */}
-                          {program.optionalDocs.length > 0 && (
+                        )}
+                      </div>
+
+                      {/* Link */}
+                      <div className="hidden md:flex items-start justify-center pt-1">
+                        <a
+                          href={program.officialUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex flex-col items-center gap-1 text-primary hover:text-primary-600 transition-colors group"
+                          title="Official site"
+                        >
+                          <div className="w-8 h-8 rounded-lg bg-primary-50 group-hover:bg-primary-100 flex items-center justify-center transition-colors">
+                            <ExternalLink className="w-4 h-4" />
+                          </div>
+                          <span className="text-[10px] font-bold">Official site</span>
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Expanded mobile content */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25 }}
+                          className="md:hidden overflow-hidden"
+                        >
+                          <div className="px-4 pb-4 border-t border-outline-variant/10 pt-4 space-y-4">
+                            {/* Level */}
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${program.level === "Federal" ? "bg-primary-50 text-primary-700 border border-primary-100" : "bg-emerald-50 text-emerald-700 border border-emerald-100"}`}>
+                                {program.level}
+                              </span>
+                            </div>
+                            {/* Eligibility */}
                             <div>
-                              <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">OPTIONAL ({program.optionalDocs.length})</div>
+                              <div className="text-[10px] font-black text-on-surface-variant uppercase tracking-wider mb-2">Eligibility</div>
+                              <div className="space-y-1">
+                                {program.eligibility.map((item, i) => (
+                                  <div key={i} className="flex items-start gap-1.5">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                    <span className="text-xs text-on-surface-variant">{item}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Mandatory docs */}
+                            <div>
+                              <div className="text-[10px] font-black text-rose-600 uppercase tracking-wider mb-2">MANDATORY ({program.mandatoryDocs.length})</div>
                               <ul className="space-y-1">
-                                {program.optionalDocs.map((doc, i) => (
-                                  <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface-variant">
-                                    <span className="mt-0.5 shrink-0">•</span>
-                                    <span>{doc.name}{doc.note && <span> ({doc.note})</span>}</span>
+                                {program.mandatoryDocs.map((doc, i) => (
+                                  <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface">
+                                    <span className="text-rose-400 mt-0.5 shrink-0">•</span>
+                                    <span>{doc.name}{doc.note && <span className="text-on-surface-variant"> ({doc.note})</span>}</span>
                                   </li>
                                 ))}
                               </ul>
                             </div>
-                          )}
-                          {/* Official link */}
-                          <a
-                            href={program.officialUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-2 w-full justify-center py-2.5 bg-violet-50 hover:bg-violet-100 border border-violet-200 rounded-xl text-violet-700 font-bold text-sm transition-colors"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                            Official Site
-                          </a>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </motion.div>
-              );
-            })}
-          </AnimatePresence>
+                            {/* Optional docs */}
+                            {program.optionalDocs.length > 0 && (
+                              <div>
+                                <div className="text-[10px] font-black text-slate-500 uppercase tracking-wider mb-2">OPTIONAL ({program.optionalDocs.length})</div>
+                                <ul className="space-y-1">
+                                  {program.optionalDocs.map((doc, i) => (
+                                    <li key={i} className="flex items-start gap-1.5 text-xs text-on-surface-variant">
+                                      <span className="mt-0.5 shrink-0">•</span>
+                                      <span>{doc.name}{doc.note && <span> ({doc.note})</span>}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                            {/* Official link */}
+                            <a
+                              href={program.officialUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 w-full justify-center py-2.5 bg-primary-50 hover:bg-primary-100 border border-primary-200 rounded-xl text-primary font-bold text-sm transition-colors"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              Official Site
+                            </a>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
 
-          {filtered.length === 0 && (
-            <div className="text-center py-20">
-              <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="w-8 h-8 text-on-surface-variant/30" />
+            {filtered.length === 0 && (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Search className="w-8 h-8 text-on-surface-variant/30" />
+                </div>
+                <h3 className="font-bold text-lg text-on-surface mb-1">No schemes found</h3>
+                <p className="text-on-surface-variant text-sm">Try adjusting your search or filter.</p>
               </div>
-              <h3 className="font-bold text-lg text-on-surface mb-1">No schemes found</h3>
-              <p className="text-on-surface-variant text-sm">Try adjusting your search or filter.</p>
-            </div>
-          )}
+            )}
+          </div>
+        </div>
+
+        {/* CTA Footer */}
+        <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-outline-variant/20 px-4 py-3 flex items-center justify-between max-w-5xl mx-auto z-40">
+          <p className="text-xs text-on-surface-variant">
+            <span className="font-bold text-on-surface">Ready to find your matches?</span> Run our AI eligibility scan to get personalized results.
+          </p>
+          <Link
+            href="/eligibility"
+            className="flex items-center gap-2 px-5 py-2 bg-gradient-primary text-white text-sm font-bold rounded-xl shadow-primary hover:shadow-primary-lg hover:-translate-y-0.5 transition-all shrink-0"
+          >
+            <Star className="w-4 h-4" />
+            Check Eligibility
+          </Link>
         </div>
       </div>
-
-      {/* CTA Footer */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-md border-t border-outline-variant/20 px-4 py-3 flex items-center justify-between max-w-5xl mx-auto">
-        <p className="text-xs text-on-surface-variant">
-          <span className="font-bold text-on-surface">Ready to find your matches?</span> Run our AI eligibility scan to get personalized results.
-        </p>
-        <Link
-          href="/eligibility"
-          className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-violet-600 to-indigo-600 text-white text-sm font-bold rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all shrink-0"
-        >
-          <Star className="w-4 h-4" />
-          Check Eligibility
-        </Link>
-      </div>
-    </div>
+      <Footer />
+    </>
   );
 }
