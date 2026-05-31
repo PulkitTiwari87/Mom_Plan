@@ -48,6 +48,20 @@ export interface AuthUser {
     savings_assets?: string;
     legal_issues?: string[];
     urgency?: string;
+
+    // Employment
+    employer_name?: string | null;
+    other_household_income?: number | boolean | null;
+    work_situation?: string | null;
+
+    // Financial / housing
+    child_support_status?: string | null;
+    monthly_utilities?: number | null;
+    landlord_name?: string | null;
+
+    // Childcare
+    childcare_preference?: string | null;
+    childcare_provider?: string | null;
   };
 }
 

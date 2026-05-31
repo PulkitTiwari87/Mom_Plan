@@ -1323,7 +1323,7 @@ export default function EligibilityPage() {
                     Next <ArrowRight className="w-4 h-4" />
                   </button>
                 ) : (
-                  <button type="button" onClick={runScan}
+                  <button type="button" onClick={() => runScan()}
                     className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-sm rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all">
                     See Results <Sparkles className="w-4 h-4" />
                   </button>
