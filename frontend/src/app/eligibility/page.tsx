@@ -1293,6 +1293,8 @@ export default function EligibilityPage() {
                   </>
                 )}
 
+              </div>
+
               {error && (
                 <div className="mx-6 mb-4 p-4 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm flex items-start gap-2.5">
                   <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-red-500" />
