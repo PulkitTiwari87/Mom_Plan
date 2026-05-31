@@ -13,6 +13,9 @@ interface BenefitProgram {
   agency: string;
   program_type: string;
   federal_or_state: string;
+  state_code?: string;
+  estimated_monthly_value_min?: number;
+  estimated_monthly_value_max?: number;
   description: string;
   benefit: string;
   website: string;
