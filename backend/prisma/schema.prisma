@@ -248,6 +248,8 @@ model EligibilityResult {
   created_at       DateTime?         @default(now()) @db.Timestamptz
 
   @@unique([user_id, program_id])
+  @@index([user_id])
+  @@index([program_id])
   @@map("results")
 }
 
@@ -274,6 +276,8 @@ model Application {
   deadlines         Deadline[]
   generated_pdfs    GeneratedPdf[]
 
+  @@index([user_id])
+  @@index([program_id])
   @@map("applications")
 }
 
@@ -367,6 +371,8 @@ model GeneratedPdf {
   validation_report Json?     // missing fields/docs at generation time
   generated_at    DateTime    @default(now()) @db.Timestamptz
 
+  @@index([user_id])
+  @@index([program_id])
   @@map("generated_pdfs")
 }
 

@@ -70,7 +70,6 @@ export class PdfController {
       const fileName = `${pdf.program?.name || 'Application'}_Package.pdf`;
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
-      res.setHeader('Content-Length', pdf.file_size.toString());
 
       // If it is an S3 URL, stream from S3
       if (pdf.file_url.startsWith('http://') || pdf.file_url.startsWith('https://')) {
@@ -86,6 +85,7 @@ export class PdfController {
           }));
           
           if (s3Response.Body) {
+            res.setHeader('Content-Length', s3Response.ContentLength?.toString() || pdf.file_size.toString());
             (s3Response.Body as any).pipe(res);
             return;
           } else {
@@ -113,13 +113,43 @@ export class PdfController {
             if (fs.existsSync(resolvedPathSub)) {
               filePath = resolvedPathSub;
             } else {
-              throw new NotFoundError(`Local PDF file not found on disk at ${filePath} or ${resolvedPath}`);
+              console.log(`PDF file not found at local paths. Attempting dynamic regeneration for PDF ID: ${pdf.id}`);
+              try {
+                await pdfService.regenerateLocalPdf(pdf.id);
+                // After regeneration, re-verify paths
+                if (fs.existsSync(resolvedPath)) {
+                  filePath = resolvedPath;
+                } else if (fs.existsSync(resolvedPathSub)) {
+                  filePath = resolvedPathSub;
+                } else if (fs.existsSync(pdf.file_url)) {
+                  filePath = pdf.file_url;
+                } else {
+                  throw new NotFoundError(`Failed to find PDF on disk even after regeneration`);
+                }
+              } catch (regenError: any) {
+                console.error(`Dynamic PDF regeneration failed for ID ${pdf.id}:`, regenError);
+                throw new NotFoundError(`Local PDF file not found on disk, and regeneration failed: ${regenError.message}`);
+              }
             }
           }
         } else {
-          throw new NotFoundError(`Local PDF file not found on disk: ${filePath}`);
+          console.log(`PDF file not found. Attempting dynamic regeneration for path: ${filePath}`);
+          try {
+            await pdfService.regenerateLocalPdf(pdf.id);
+            if (fs.existsSync(filePath)) {
+              // Path found now
+            } else {
+              throw new NotFoundError(`Failed to find PDF at ${filePath} even after regeneration`);
+            }
+          } catch (regenError: any) {
+            console.error(`Dynamic PDF regeneration failed for ID ${pdf.id}:`, regenError);
+            throw new NotFoundError(`Local PDF file not found on disk, and regeneration failed: ${regenError.message}`);
+          }
         }
       }
+
+      const stats = fs.statSync(filePath);
+      res.setHeader('Content-Length', stats.size.toString());
 
       const stream = fs.createReadStream(filePath);
       stream.pipe(res);

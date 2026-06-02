@@ -118,8 +118,13 @@ export class PdfService {
     };
   }
 
-  // ─── Main generation function ──────────────────────────────────────────────
-  async generateApplicationPdf(userId: string, programId: string, applicationId?: string): Promise<any> {
+  // ─── Generate PDF Buffer Helper ───────────────────────────────────────────
+  async generatePdfBuffer(
+    userId: string,
+    programId: string,
+    applicationId?: string,
+    existingUuid?: string
+  ): Promise<{ pdfBuffer: Buffer; validationReport: ValidationReport; uuid: string }> {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: { family_profile: true, documents: true },
@@ -217,7 +222,7 @@ Write the eligibility summary for this applicant's application packet.`;
       }
     }
 
-    const uuid = crypto.randomUUID();
+    const uuid = existingUuid || crypto.randomUUID();
 
     // ── Build PDF ───────────────────────────────────────────────────────────
     const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
@@ -586,6 +591,13 @@ Write the eligibility summary for this applicant's application packet.`;
       doc.end();
     });
 
+    return { pdfBuffer, validationReport, uuid };
+  }
+
+  // ─── Main generation function ──────────────────────────────────────────────
+  async generateApplicationPdf(userId: string, programId: string, applicationId?: string): Promise<any> {
+    const { pdfBuffer, validationReport, uuid } = await this.generatePdfBuffer(userId, programId, applicationId);
+
     // ── File persistence ────────────────────────────────────────────────────
     const isS3Placeholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
     let file_url = '';
@@ -631,15 +643,60 @@ Write the eligibility summary for this applicant's application packet.`;
     return generated;
   }
 
+  // ─── Regenerate Local PDF File ─────────────────────────────────────────────
+  async regenerateLocalPdf(pdfId: string): Promise<Buffer> {
+    const pdf = await prisma.generatedPdf.findUnique({
+      where: { id: pdfId },
+      include: { program: true }
+    });
+    if (!pdf) throw new Error('PDF not found in database');
+
+    const { pdfBuffer } = await this.generatePdfBuffer(pdf.user_id, pdf.program_id, pdf.application_id || undefined, pdf.id);
+
+    const isS3Placeholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
+    if (isS3Placeholder || !pdf.file_url.startsWith('http')) {
+      const relativeDir = path.join('uploads', 'pdfs', pdf.user_id);
+      const dir = path.join(process.cwd(), relativeDir);
+      fs.mkdirSync(dir, { recursive: true });
+      const localPath = path.join(dir, `${pdf.id}.pdf`);
+      fs.writeFileSync(localPath, pdfBuffer);
+
+      // Also try backend directory if it exists (for backend running in subdirectory)
+      const backendDir = path.join(process.cwd(), 'backend', relativeDir);
+      if (fs.existsSync(path.join(process.cwd(), 'backend'))) {
+        fs.mkdirSync(backendDir, { recursive: true });
+        fs.writeFileSync(path.join(backendDir, `${pdf.id}.pdf`), pdfBuffer);
+      }
+    } else {
+      // S3 is enabled and URL is S3 URL: re-upload to S3 in case it was deleted
+      const { PutObjectCommand } = require('@aws-sdk/client-s3');
+      const { s3Client } = require('../../config/s3');
+      try {
+        const urlObj = new URL(pdf.file_url);
+        const key = urlObj.pathname.substring(1); // remove leading slash
+        await s3Client.send(new PutObjectCommand({
+          Bucket: env.S3_BUCKET_NAME,
+          Key: key,
+          Body: pdfBuffer,
+          ContentType: 'application/pdf',
+        }));
+      } catch (s3Err) {
+        console.error('Failed to upload regenerated PDF to S3:', s3Err);
+      }
+    }
+    return pdfBuffer;
+  }
+
   // ── Download URL ───────────────────────────────────────────────────────────
-  async getDownloadUrl(pdfId: string, userId: string, role?: string): Promise<string> {
+  async getDownloadUrl(pdfId: string, userId: string, role?: string, backendUrl?: string): Promise<string> {
     const pdf = await prisma.generatedPdf.findUnique({ where: { id: pdfId } });
     if (!pdf) throw new Error('PDF not found');
     if (role !== 'admin' && role !== 'counselor' && pdf.user_id !== userId) throw new Error('Access denied to this PDF');
 
     const isPlaceholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
     if (isPlaceholder) {
-      return `${env.FRONTEND_URL.replace(/:3000|:3001/, ':5000')}/api/pdf/${pdfId}/download/stream`;
+      const baseUrl = backendUrl || `${env.FRONTEND_URL.replace(/:3000|:3001/, ':5000')}`;
+      return `${baseUrl}/api/pdf/${pdfId}/download/stream`;
     } else {
       const key = pdf.file_url.split('.amazonaws.com/').pop() || '';
       return getPresignedDownloadUrl(key);

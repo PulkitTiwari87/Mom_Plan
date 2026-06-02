@@ -44,21 +44,29 @@ export default function DashboardPage() {
   const { data: eligibilityResults, isLoading: loadingEligibility } = useQuery({
     queryKey: ["eligibility-results"],
     queryFn: () => api.get("/api/eligibility/results").then((r) => r.data.data),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: applications, isLoading: loadingApps } = useQuery({
     queryKey: ["applications"],
     queryFn: () => api.get("/api/applications").then((r) => r.data.data),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: deadlines, isLoading: loadingDeadlines } = useQuery({
     queryKey: ["deadlines"],
     queryFn: () => api.get("/api/deadlines").then((r) => r.data.data),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: notifications, isLoading: loadingNotifications } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => api.get("/api/notifications").then((r) => r.data.data),
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   const qualifiedPrograms = eligibilityResults?.filter(
