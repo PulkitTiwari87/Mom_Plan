@@ -619,7 +619,6 @@ function DocumentsContent() {
           </div>
         )
       )}
-    </div>
 
       {/* Delete Confirmation Modal */}
       <AnimatePresence>
@@ -669,6 +668,7 @@ function DocumentsContent() {
           </div>
         )}
       </AnimatePresence>
+    </div>
   );
 }
 
