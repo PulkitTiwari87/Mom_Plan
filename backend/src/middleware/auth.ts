@@ -4,38 +4,67 @@ import { env } from '../config/env';
 import { UnauthorizedError, ForbiddenError } from '../utils/errors';
 import { UserRole, UserPlan } from '@prisma/client';
 
-interface JwtPayload {
-  id: string;
+interface AccessTokenPayload {
+  userId: string;
   email: string;
   role: UserRole;
   plan: UserPlan;
 }
 
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
-  let token: string | undefined;
-
-  // 1. Check Authorization header
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next(new UnauthorizedError('Authentication token is missing or invalid'));
   }
 
-  // 2. Fall back to cookie (mp_at)
-  if (!token && req.cookies) {
-    token = req.cookies.mp_at;
-  }
-
+  const token = authHeader.split(' ')[1];
   if (!token) {
     return next(new UnauthorizedError('Authentication token is missing or invalid'));
   }
 
   try {
-    const decoded = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
-    req.user = decoded;
+    const decoded = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
+    req.user = {
+      id: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      plan: decoded.plan,
+    };
     return next();
-  } catch {
-    return next(new UnauthorizedError('Invalid or expired authentication token'));
+  } catch (err) {
+    if (err instanceof jwt.TokenExpiredError) {
+      return next(new UnauthorizedError('Access token expired'));
+    }
+    return next(new UnauthorizedError('Invalid authentication token'));
   }
+};
+
+export const optionalAuthenticate = (req: Request, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+  if (!token) {
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
+    req.user = {
+      id: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      plan: decoded.plan,
+    };
+  } catch {
+    // Ignore invalid tokens for optional auth routes (e.g. logout)
+  }
+
+  return next();
 };
 
 export const authorizeRoles = (...roles: UserRole[]) => {

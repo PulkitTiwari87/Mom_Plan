@@ -11,31 +11,30 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, isHydrated, user, updateUser } = useAuthStore();
+  const { isAuthenticated, isHydrated, isInitializing, updateUser } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || isInitializing) return;
 
     if (!isAuthenticated) {
-      router.push("/login");
+      router.replace("/login");
       return;
     }
 
-    // Sync database profile state with Zustand on mount
     api
       .get("/api/user/profile")
       .then((res) => {
-        if (res.data && res.data.data) {
+        if (res.data?.data) {
           updateUser(res.data.data);
         }
       })
-      .catch((err) => {
-        console.error("Failed to sync user profile:", err);
+      .catch(() => {
+        // Profile sync failures are handled by the API refresh interceptor
       });
-  }, [isHydrated, isAuthenticated, router, updateUser]);
+  }, [isHydrated, isInitializing, isAuthenticated, router, updateUser]);
 
-  if (!isHydrated || !isAuthenticated) {
+  if (!isHydrated || isInitializing || !isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-hero">
         <div className="animate-spin w-8 h-8 border-2 border-primary-500 border-t-transparent rounded-full" />

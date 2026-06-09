@@ -149,12 +149,7 @@ export function DashboardSidebar() {
   }, []);
 
   const handleLogout = async () => {
-    try {
-      await api.post("/api/auth/logout");
-    } catch {
-      // No-op
-    }
-    logout();
+    await logout();
     router.push("/");
   };
 

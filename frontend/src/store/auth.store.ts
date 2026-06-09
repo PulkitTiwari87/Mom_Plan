@@ -1,5 +1,11 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import {
+  api,
+  clearInMemoryToken,
+  refreshAccessToken,
+  setInMemoryToken,
+} from "@/lib/api";
 
 export interface AuthUser {
   id: string;
@@ -21,7 +27,6 @@ export interface AuthUser {
     is_pregnant: boolean;
     children_ages?: number[];
 
-    // New fields
     first_name?: string | null;
     last_name?: string | null;
     phone?: string | null;
@@ -49,17 +54,14 @@ export interface AuthUser {
     legal_issues?: string[];
     urgency?: string;
 
-    // Employment
     employer_name?: string | null;
     other_household_income?: number | boolean | null;
     work_situation?: string | null;
 
-    // Financial / housing
     child_support_status?: string | null;
     monthly_utilities?: number | null;
     landlord_name?: string | null;
 
-    // Childcare
     childcare_preference?: string | null;
     childcare_provider?: string | null;
   };
@@ -67,48 +69,140 @@ export interface AuthUser {
 
 interface AuthState {
   user: AuthUser | null;
-  // accessToken is kept in memory only — NOT persisted to localStorage
-  // The refresh token lives in an httpOnly cookie managed by the server
   accessToken: string | null;
   isAuthenticated: boolean;
   isHydrated: boolean;
+  isInitializing: boolean;
+  authGeneration: number;
   setAuth: (user: AuthUser, accessToken: string) => void;
   setAccessToken: (accessToken: string) => void;
-  logout: () => void;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  logout: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
   updateUser: (user: Partial<AuthUser>) => void;
   setHydrated: () => void;
+  setInitializing: (value: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
       isAuthenticated: false,
       isHydrated: false,
+      isInitializing: true,
+      authGeneration: 0,
 
-      /**
-       * Called after a successful login/register API response.
-       * Stores the access token in memory (Zustand state), NOT in localStorage.
-       * The refresh token is in an httpOnly cookie set by the server.
-       */
       setAuth: (user, accessToken) => {
-        set({ user, accessToken, isAuthenticated: true });
+        setInMemoryToken(accessToken);
+        set((state) => ({
+          user,
+          accessToken,
+          isAuthenticated: true,
+          authGeneration: state.authGeneration + 1,
+        }));
       },
 
-      /** Called by the API interceptor after a silent token refresh */
       setAccessToken: (accessToken) => {
+        setInMemoryToken(accessToken);
         set({ accessToken });
       },
 
-      logout: () => {
-        // No localStorage to clean up — tokens were never stored there.
-        // The server will clear the httpOnly refresh cookie via the logout endpoint.
-        set({
-          user: null,
-          accessToken: null,
-          isAuthenticated: false,
-        });
+      login: async (email, password) => {
+        const response = await api.post("/api/auth/login", { email, password });
+        const { user, accessToken } = response.data.data;
+        get().setAuth(user, accessToken);
+        return user;
+      },
+
+      logout: async () => {
+        try {
+          await api.post("/api/auth/logout");
+        } catch {
+          // Clear local session even if server logout fails
+        } finally {
+          clearInMemoryToken();
+          set((state) => ({
+            user: null,
+            accessToken: null,
+            isAuthenticated: false,
+            authGeneration: state.authGeneration + 1,
+          }));
+        }
+      },
+
+      refreshSession: async () => {
+        const generationAtStart = get().authGeneration;
+
+        try {
+          const result = await refreshAccessToken();
+
+          // Login/logout happened while refresh was in flight — don't apply stale result
+          if (generationAtStart !== get().authGeneration) {
+            return get().isAuthenticated;
+          }
+
+          if (!result) {
+            // Login completed during refresh — keep the new session
+            if (get().accessToken) {
+              return get().isAuthenticated;
+            }
+            // Only clear stale persisted auth, not anonymous visitors
+            if (get().isAuthenticated) {
+              clearInMemoryToken();
+              set({
+                user: null,
+                accessToken: null,
+                isAuthenticated: false,
+              });
+            }
+            return false;
+          }
+
+          const { accessToken, user } = result;
+          setInMemoryToken(accessToken);
+
+          try {
+            const profileResponse = await api.get("/api/user/profile");
+            if (generationAtStart !== get().authGeneration) {
+              return get().isAuthenticated;
+            }
+            const profile = profileResponse.data?.data ?? user;
+            set({
+              user: profile,
+              accessToken,
+              isAuthenticated: true,
+            });
+          } catch {
+            if (generationAtStart !== get().authGeneration) {
+              return get().isAuthenticated;
+            }
+            set({
+              user,
+              accessToken,
+              isAuthenticated: true,
+            });
+          }
+
+          return true;
+        } catch {
+          if (generationAtStart !== get().authGeneration) {
+            return get().isAuthenticated;
+          }
+          if (get().accessToken) {
+            return get().isAuthenticated;
+          }
+          if (get().isAuthenticated) {
+            clearInMemoryToken();
+            set({
+              user: null,
+              accessToken: null,
+              isAuthenticated: false,
+            });
+          }
+          return false;
+        }
       },
 
       updateUser: (partial) =>
@@ -117,16 +211,13 @@ export const useAuthStore = create<AuthState>()(
         })),
 
       setHydrated: () => set({ isHydrated: true }),
+      setInitializing: (value) => set({ isInitializing: value }),
     }),
     {
       name: "momplan-user",
-      // SECURITY: Only persist non-sensitive user metadata.
-      // accessToken is NEVER persisted — it lives in memory only.
-      // refreshToken lives in an httpOnly server cookie (not accessible here).
       partialize: (state: AuthState) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
-        // accessToken and isHydrated intentionally excluded
       }),
       onRehydrateStorage: () => (state: AuthState | undefined) => {
         state?.setHydrated();

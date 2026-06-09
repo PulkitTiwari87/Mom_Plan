@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { api, clearInMemoryToken, setInMemoryToken } from "../lib/api";
 
 export interface AdminUser {
   id: string;
@@ -12,49 +13,121 @@ export interface AdminUser {
 interface AuthState {
   user: AdminUser | null;
   accessToken: string | null;
-  refreshToken: string | null;
   isAuthenticated: boolean;
-  setAuth: (user: AdminUser, accessToken: string, refreshToken: string) => void;
-  logout: () => void;
+  isHydrated: boolean;
+  isInitializing: boolean;
+  authGeneration: number;
+  setAuth: (user: AdminUser, accessToken: string) => void;
+  setAccessToken: (accessToken: string) => void;
+  logout: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
   updateUser: (user: Partial<AdminUser>) => void;
+  setHydrated: () => void;
+  setInitializing: (value: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       accessToken: null,
-      refreshToken: null,
       isAuthenticated: false,
+      isHydrated: false,
+      isInitializing: true,
+      authGeneration: 0,
 
-      setAuth: (user, accessToken, refreshToken) => {
-        if (typeof window !== "undefined") {
-          localStorage.setItem("momplan_access_token", accessToken);
-          localStorage.setItem("momplan_refresh_token", refreshToken);
-        }
-        set({ user, accessToken, refreshToken, isAuthenticated: true });
+      setAuth: (user, accessToken) => {
+        setInMemoryToken(accessToken);
+        set((state) => ({
+          user,
+          accessToken,
+          isAuthenticated: true,
+          authGeneration: state.authGeneration + 1,
+        }));
       },
 
-      logout: () => {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("momplan_access_token");
-          localStorage.removeItem("momplan_refresh_token");
+      setAccessToken: (accessToken) => {
+        setInMemoryToken(accessToken);
+        set({ accessToken });
+      },
+
+      logout: async () => {
+        try {
+          await api.post("/api/auth/logout");
+        } catch {
+          // Clear local session even if server logout fails
+        } finally {
+          clearInMemoryToken();
+          set((state) => ({
+            user: null,
+            accessToken: null,
+            isAuthenticated: false,
+            authGeneration: state.authGeneration + 1,
+          }));
         }
-        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+      },
+
+      refreshSession: async () => {
+        const generationAtStart = get().authGeneration;
+        const { refreshAccessToken } = await import("../lib/api");
+        const accessToken = await refreshAccessToken();
+
+        if (generationAtStart !== get().authGeneration) {
+          return get().isAuthenticated;
+        }
+
+        if (!accessToken) {
+          if (get().accessToken) {
+            return get().isAuthenticated;
+          }
+          if (get().isAuthenticated) {
+            clearInMemoryToken();
+            set({
+              user: null,
+              accessToken: null,
+              isAuthenticated: false,
+            });
+          }
+          return false;
+        }
+
+        try {
+          const profileResponse = await api.get("/api/user/profile");
+          if (generationAtStart !== get().authGeneration) {
+            return get().isAuthenticated;
+          }
+          set({
+            user: profileResponse.data.data,
+            accessToken,
+            isAuthenticated: true,
+          });
+        } catch {
+          if (generationAtStart !== get().authGeneration) {
+            return get().isAuthenticated;
+          }
+          set({ accessToken, isAuthenticated: true });
+        }
+
+        return true;
       },
 
       updateUser: (partial) =>
         set((state) => ({
           user: state.user ? { ...state.user, ...partial } : null,
         })),
+
+      setHydrated: () => set({ isHydrated: true }),
+      setInitializing: (value) => set({ isInitializing: value }),
     }),
     {
       name: "momplan-admin-auth",
-      // Persist user + auth state across sessions
-      partialState: (state: AuthState) => ({
+      partialize: (state: AuthState) => ({
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state: AuthState | undefined) => {
+        state?.setHydrated();
+      },
     } as any
   )
 );

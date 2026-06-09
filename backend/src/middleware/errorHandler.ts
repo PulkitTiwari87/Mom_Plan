@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
+import { Prisma } from '@prisma/client';
 import { AppError } from '../utils/errors';
 import { ZodError } from 'zod';
 import { safeLogger } from './sanitize';
+
+const GENERIC_SERVER_MESSAGE = 'Something went wrong. Please try again later.';
+const GENERIC_UNAVAILABLE_MESSAGE = 'Service temporarily unavailable. Please try again.';
 
 export const errorHandler = (
   err: Error,
@@ -63,13 +67,29 @@ export const errorHandler = (
     });
   }
 
-  // Fallback default Unhandled exception
-  statusCode = 500;
-  return res.status(statusCode).json({
+  // Database errors — log details server-side, never expose to client
+  if (
+    err instanceof Prisma.PrismaClientKnownRequestError ||
+    err instanceof Prisma.PrismaClientValidationError ||
+    err instanceof Prisma.PrismaClientInitializationError
+  ) {
+    safeLogger.error('Database error caught by middleware:', err);
+    return res.status(503).json({
+      success: false,
+      error: {
+        message: GENERIC_UNAVAILABLE_MESSAGE,
+        statusCode: 503,
+      },
+    });
+  }
+
+  // Fallback — never expose raw stack traces or internal messages to clients
+  safeLogger.error('Unhandled error caught by middleware:', err);
+  return res.status(500).json({
     success: false,
     error: {
-      message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
-      statusCode,
+      message: GENERIC_SERVER_MESSAGE,
+      statusCode: 500,
     },
   });
 };

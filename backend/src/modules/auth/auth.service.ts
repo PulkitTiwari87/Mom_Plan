@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/prisma';
@@ -6,29 +7,107 @@ import { BadRequestError, UnauthorizedError, NotFoundError } from '../../utils/e
 import { sendEmail } from '../../config/email';
 import { UserRole, UserPlan } from '@prisma/client';
 
-// Simple in-memory cache for password reset tokens only (these are short-lived: 1h)
 const resetTokensCache = new Map<string, string>();
 
-interface TokenPayload {
-  id: string;
+const ACCESS_TOKEN_TTL = '15m';
+const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
+interface AccessTokenPayload {
+  userId: string;
   email: string;
   role: UserRole;
   plan: UserPlan;
 }
 
+interface AuthUserSummary {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  plan: UserPlan;
+}
+
+function hashToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function generateOpaqueRefreshToken(): string {
+  return crypto.randomBytes(64).toString('base64url');
+}
+
+function toAuthUser(user: {
+  id: string;
+  email: string;
+  full_name: string;
+  role: UserRole;
+  plan: UserPlan;
+}): AuthUserSummary {
+  return {
+    id: user.id,
+    email: user.email,
+    full_name: user.full_name,
+    role: user.role,
+    plan: user.plan,
+  };
+}
+
 export class AuthService {
-  private generateTokens(user: TokenPayload) {
-    const payload = {
-      id: user.id,
+  private generateAccessToken(user: AccessTokenPayload): string {
+    return jwt.sign(
+      {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+        plan: user.plan,
+      },
+      env.JWT_SECRET,
+      { expiresIn: ACCESS_TOKEN_TTL }
+    );
+  }
+
+  private async createRefreshToken(userId: string): Promise<string> {
+    const rawToken = generateOpaqueRefreshToken();
+    const tokenHash = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+    await prisma.refreshToken.create({
+      data: {
+        token: tokenHash,
+        user_id: userId,
+        expires_at: expiresAt,
+      },
+    });
+
+    return rawToken;
+  }
+
+  private async revokeAllRefreshTokens(userId: string): Promise<void> {
+    await prisma.refreshToken.updateMany({
+      where: { user_id: userId, revoked: false },
+      data: { revoked: true },
+    });
+  }
+
+  private async issueSession(user: {
+    id: string;
+    email: string;
+    full_name: string;
+    role: UserRole;
+    plan: UserPlan;
+  }) {
+    const accessToken = this.generateAccessToken({
+      userId: user.id,
       email: user.email,
       role: user.role,
       plan: user.plan,
+    });
+    const refreshToken = await this.createRefreshToken(user.id);
+
+    return {
+      user: toAuthUser(user),
+      accessToken,
+      refreshToken,
     };
-
-    const accessToken = jwt.sign(payload, env.JWT_SECRET, { expiresIn: '15m' });
-    const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: '7d' });
-
-    return { accessToken, refreshToken };
   }
 
   async register(data: { email: string; password: string; full_name: string; phone?: string }) {
@@ -51,31 +130,13 @@ export class AuthService {
       },
     });
 
-    // Send welcome email
     await sendEmail({
       to: user.email,
       subject: 'Welcome to MomPlan!',
       html: `<h1>Welcome to MomPlan, ${user.full_name}!</h1><p>We are thrilled to help you discover and apply for the benefits your family deserves.</p>`,
     });
 
-    const tokens = this.generateTokens(user);
-
-    // Persist refresh token to database so it survives server restarts
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { refresh_token: tokens.refreshToken },
-    });
-
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role,
-        plan: user.plan,
-      },
-      ...tokens,
-    };
+    return this.issueSession(user);
   }
 
   async login(data: { email: string; password: string }) {
@@ -92,68 +153,78 @@ export class AuthService {
       throw new UnauthorizedError('Invalid credentials');
     }
 
-    const tokens = this.generateTokens(user);
-
-    // Persist refresh token to database + update last_active_at
     await prisma.user.update({
       where: { id: user.id },
-      data: {
-        last_active_at: new Date(),
-        refresh_token: tokens.refreshToken,
-      },
+      data: { last_active_at: new Date() },
     });
 
-    return {
-      user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role,
-        plan: user.plan,
-      },
-      ...tokens,
-    };
+    return this.issueSession(user);
   }
 
-  async logout(userId: string) {
-    // Clear persisted refresh token from database
-    await prisma.user.update({
-      where: { id: userId },
-      data: { refresh_token: null },
-    });
+  async logout(refreshToken?: string, userId?: string): Promise<void> {
+    if (refreshToken) {
+      const tokenHash = hashToken(refreshToken);
+      await prisma.refreshToken.updateMany({
+        where: { token: tokenHash, revoked: false },
+        data: { revoked: true },
+      });
+    }
+
+    if (userId) {
+      await this.revokeAllRefreshTokens(userId);
+    }
   }
 
   async refresh(refreshToken: string) {
-    try {
-      const decoded = jwt.verify(refreshToken, env.JWT_REFRESH_SECRET) as TokenPayload;
+    const tokenHash = hashToken(refreshToken);
 
-      // Validate token against the database (survives server restarts unlike in-memory Map)
-      const user = await prisma.user.findUnique({
-        where: { id: decoded.id },
-      });
+    const storedToken = await prisma.refreshToken.findUnique({
+      where: { token: tokenHash },
+      include: { user: true },
+    });
 
-      if (!user || user.status === 'inactive') {
-        throw new UnauthorizedError('User account not found or inactive');
-      }
-
-      if (!user.refresh_token || user.refresh_token !== refreshToken) {
-        throw new UnauthorizedError('Refresh token revoked or invalid');
-      }
-
-      const tokens = this.generateTokens(user);
-
-      // Rotate refresh token in database
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { refresh_token: tokens.refreshToken },
-      });
-
-      return tokens;
-    } catch (err: any) {
-      // Re-throw custom errors as-is; wrap JWT errors
-      if (err instanceof UnauthorizedError) throw err;
+    if (!storedToken) {
       throw new UnauthorizedError('Invalid refresh token');
     }
+
+    if (storedToken.revoked) {
+      // Replay attack: revoke all sessions for this user
+      await this.revokeAllRefreshTokens(storedToken.user_id);
+      throw new UnauthorizedError('Refresh token revoked or invalid');
+    }
+
+    if (storedToken.expires_at < new Date()) {
+      await prisma.refreshToken.update({
+        where: { id: storedToken.id },
+        data: { revoked: true },
+      });
+      throw new UnauthorizedError('Refresh token expired');
+    }
+
+    const user = storedToken.user;
+    if (!user || user.status === 'inactive') {
+      throw new UnauthorizedError('User account not found or inactive');
+    }
+
+    // Rotate: revoke the current token before issuing a new one
+    await prisma.refreshToken.update({
+      where: { id: storedToken.id },
+      data: { revoked: true },
+    });
+
+    const accessToken = this.generateAccessToken({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      plan: user.plan,
+    });
+    const newRefreshToken = await this.createRefreshToken(user.id);
+
+    return {
+      user: toAuthUser(user),
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
   }
 
   async forgotPassword(email: string) {
@@ -162,12 +233,10 @@ export class AuthService {
     });
 
     if (!user) {
-      // Return success to prevent email enumeration
       return;
     }
 
-    // Generate secure simple token
-    const resetToken = jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: '1h' });
+    const resetToken = jwt.sign({ userId: user.id }, env.JWT_SECRET, { expiresIn: '1h' });
     resetTokensCache.set(resetToken, user.id);
 
     const resetUrl = `${env.FRONTEND_URL}/reset-password?token=${resetToken}`;
@@ -192,12 +261,8 @@ export class AuthService {
       data: { password_hash },
     });
 
-    // Invalidate reset token and clear the user's refresh token from the database
     resetTokensCache.delete(token);
-    await prisma.user.update({
-      where: { id: userId },
-      data: { refresh_token: null },
-    });
+    await this.revokeAllRefreshTokens(userId);
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string) {

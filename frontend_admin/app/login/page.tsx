@@ -23,7 +23,7 @@ export default function AdminLoginPage() {
 
     try {
       const res = await api.post("/api/auth/login", { email, password });
-      const { user, accessToken, refreshToken } = res.data.data;
+      const { user, accessToken } = res.data.data;
 
       if (user.role !== "admin") {
         setError("Access denied. This portal is restricted to admin users only.");
@@ -31,7 +31,7 @@ export default function AdminLoginPage() {
         return;
       }
 
-      setAuth(user, accessToken, refreshToken);
+      setAuth(user, accessToken);
       router.push("/dashboard");
     } catch (err: any) {
       setError(

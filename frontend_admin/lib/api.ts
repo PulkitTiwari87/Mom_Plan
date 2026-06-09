@@ -1,85 +1,95 @@
-import axios from "axios";
+import axios, { AxiosError, InternalAxiosRequestConfig } from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
 
 export const api = axios.create({
   baseURL: API_URL,
   headers: { "Content-Type": "application/json" },
-  withCredentials: false,
+  withCredentials: true,
 });
 
-// Attach JWT token from localStorage on every request
+function getAccessToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.__momplan_admin_access_token__ ?? null;
+}
+
 api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
-    const token = localStorage.getItem("momplan_access_token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+  const token = getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-let isRefreshing = false;
-let refreshSubscribers: ((token: string) => void)[] = [];
+let refreshPromise: Promise<string | null> | null = null;
 
-function subscribeTokenRefresh(cb: (token: string) => void) {
-  refreshSubscribers.push(cb);
+function isAuthRefreshRequest(config?: InternalAxiosRequestConfig): boolean {
+  const url = config?.url ?? "";
+  return url.includes("/api/auth/refresh");
 }
 
-function onRefreshed(token: string) {
-  refreshSubscribers.forEach((cb) => cb(token));
-  refreshSubscribers = [];
+export async function refreshAccessToken(): Promise<string | null> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    try {
+      const response = await axios.post(
+        `${API_URL}/api/auth/refresh`,
+        {},
+        { withCredentials: true }
+      );
+      const { accessToken } = response.data.data;
+      setInMemoryToken(accessToken);
+      return accessToken;
+    } catch {
+      return null;
+    } finally {
+      refreshPromise = null;
+    }
+  })();
+
+  return refreshPromise;
 }
 
-// Auto-refresh token on 401 and redirect to login on failure
 api.interceptors.response.use(
   (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
+  async (error: AxiosError) => {
+    const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      if (isRefreshing) {
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
-          });
-        });
-      }
-
-      isRefreshing = true;
-
-      try {
-        const refreshToken = localStorage.getItem("momplan_refresh_token");
-        if (!refreshToken) throw new Error("No refresh token");
-
-        const response = await axios.post(`${API_URL}/api/auth/refresh`, {
-          refreshToken,
-        });
-
-        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
-        localStorage.setItem("momplan_access_token", accessToken);
-        localStorage.setItem("momplan_refresh_token", newRefreshToken);
-
-        isRefreshing = false;
-        onRefreshed(accessToken);
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        isRefreshing = false;
-        refreshSubscribers = [];
-        localStorage.removeItem("momplan_access_token");
-        localStorage.removeItem("momplan_refresh_token");
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
-        return Promise.reject(refreshError);
-      }
+    if (!originalRequest || error.response?.status !== 401 || isAuthRefreshRequest(originalRequest)) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    if (originalRequest._retry) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+    const accessToken = await refreshAccessToken();
+
+    if (!accessToken) {
+      return Promise.reject(error);
+    }
+
+    originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+    return api(originalRequest);
   }
 );
+
+export function setInMemoryToken(token: string) {
+  if (typeof window !== "undefined") {
+    window.__momplan_admin_access_token__ = token;
+  }
+}
+
+export function clearInMemoryToken() {
+  if (typeof window !== "undefined") {
+    window.__momplan_admin_access_token__ = undefined;
+  }
+}
+
+declare global {
+  interface Window {
+    __momplan_admin_access_token__?: string;
+  }
+}

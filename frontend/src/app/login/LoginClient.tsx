@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { useAuthStore } from "@/store/auth.store";
-import { api, setInMemoryToken } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/errors";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -24,7 +24,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
-  const { setAuth } = useAuthStore();
+  const { login } = useAuthStore();
   const router = useRouter();
 
   const {
@@ -38,23 +38,15 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     setError("");
     try {
-      const response = await api.post("/api/auth/login", data);
-      // SECURITY: refreshToken is now an httpOnly cookie set by the server.
-      // We only receive the user object and accessToken in the JSON body.
-      const { user, accessToken } = response.data.data;
-      setInMemoryToken(accessToken);
-      setAuth(user, accessToken);
+      const user = await login(data.email, data.password);
 
       if (user.role === "admin") {
         router.push("/admin");
       } else {
         router.push("/dashboard");
       }
-    } catch (err: any) {
-      setError(
-        err.response?.data?.error?.message ||
-          "Invalid credentials. Please try again."
-      );
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Invalid credentials. Please try again."));
     }
   };
 

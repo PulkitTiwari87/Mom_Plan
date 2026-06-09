@@ -64,10 +64,7 @@ export function Sidebar() {
   const router = useRouter();
 
   const handleLogout = async () => {
-    try {
-      await api.post("/api/auth/logout");
-    } catch {}
-    logout();
+    await logout();
     router.push("/login");
   };
 

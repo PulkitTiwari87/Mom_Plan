@@ -10,21 +10,19 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, isHydrated, isInitializing, user } = useAuthStore();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
-    } else if (user?.role !== "admin") {
-      // Non-admins get redirected to login
-      router.push("/login");
-    }
-  }, [isAuthenticated, user, router]);
+    if (!isHydrated || isInitializing) return;
 
-  // Show spinner while redirect is in progress
-  if (!isAuthenticated || user?.role !== "admin") {
+    if (!isAuthenticated || user?.role !== "admin") {
+      router.replace("/login");
+    }
+  }, [isAuthenticated, isHydrated, isInitializing, user, router, pathname]);
+
+  if (!isHydrated || isInitializing || !isAuthenticated || user?.role !== "admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0f1117]">
         <div className="w-8 h-8 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />

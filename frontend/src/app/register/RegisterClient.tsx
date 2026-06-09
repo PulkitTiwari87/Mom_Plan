@@ -12,7 +12,8 @@ import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { useAuthStore } from "@/store/auth.store";
-import { api, setInMemoryToken } from "@/lib/api";
+import { api } from "@/lib/api";
+import { getApiErrorMessage } from "@/lib/errors";
 
 const registerSchema = z
   .object({
@@ -72,13 +73,10 @@ function RegisterForm() {
         phone: data.phone,
       });
       const { user, accessToken } = response.data.data;
-      setInMemoryToken(accessToken);
       setAuth(user, accessToken);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(
-        err.response?.data?.error?.message || "Registration failed. Please try again."
-      );
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Registration failed. Please try again."));
     }
   };
 
