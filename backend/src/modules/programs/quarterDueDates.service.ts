@@ -67,6 +67,32 @@ export function generateDueDatesForQuarter(
   }
 }
 
+/** Next upcoming date within a quarter, or the last date if all have passed. */
+export function getRelevantDueDateInQuarter(
+  dueDates: string[],
+  referenceDate: Date = new Date()
+): string | null {
+  if (dueDates.length === 0) return null;
+
+  const today = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate())
+  );
+
+  const parsed = [...dueDates]
+    .sort()
+    .map((dateStr) => new Date(`${dateStr}T00:00:00.000Z`))
+    .filter((date) => !Number.isNaN(date.getTime()));
+
+  for (const date of parsed) {
+    if (date.getTime() >= today.getTime()) {
+      return date.toISOString().slice(0, 10);
+    }
+  }
+
+  const last = parsed[parsed.length - 1];
+  return last ? last.toISOString().slice(0, 10) : null;
+}
+
 export function getNextUpcomingDueDate(
   quarterRecords: Array<{ year: number; quarter: Quarter; due_dates_json: unknown }>,
   referenceDate: Date = new Date()
@@ -128,6 +154,35 @@ export class QuarterDueDatesService {
       })),
       referenceDate
     );
+  }
+
+  async getCurrentQuarterDueInfoForProgram(
+    programId: string,
+    referenceDate?: Date
+  ): Promise<{ quarter: Quarter; due_date: string | null }> {
+    const ref = referenceDate ?? new Date();
+    const year = ref.getUTCFullYear();
+    const quarter = getQuarterForMonth(ref.getUTCMonth() + 1);
+
+    const record = await prisma.programQuarterDueDate.findUnique({
+      where: {
+        program_id_year_quarter: {
+          program_id: programId,
+          year,
+          quarter,
+        },
+      },
+    });
+
+    if (!record) {
+      return { quarter, due_date: null };
+    }
+
+    const dueDates = parseDueDatesJson(record.due_dates_json);
+    return {
+      quarter,
+      due_date: getRelevantDueDateInQuarter(dueDates, ref),
+    };
   }
 
   /**

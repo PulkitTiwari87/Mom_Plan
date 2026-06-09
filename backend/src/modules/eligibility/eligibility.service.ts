@@ -206,7 +206,7 @@ export class EligibilityService {
       orderBy: { confidence_score: 'desc' },
     });
 
-    return this.enrichResultsWithNextDueDate(results);
+    return this.enrichResultsWithQuarterDueDates(results);
   }
 
   async getResultByProgramId(userId: string, programId: string) {
@@ -222,34 +222,35 @@ export class EligibilityService {
 
     if (!result) return null;
 
-    const [enriched] = await this.enrichResultsWithNextDueDate([result]);
+    const [enriched] = await this.enrichResultsWithQuarterDueDates([result]);
     return enriched;
   }
 
-  private async enrichResultsWithNextDueDate<
+  private async enrichResultsWithQuarterDueDates<
     T extends { program: { id: string } | null }
   >(results: T[]) {
     const programIds = [
       ...new Set(results.map((result) => result.program?.id).filter(Boolean) as string[]),
     ];
 
-    const nextDueDates = new Map<string, string | null>();
+    const quarterDueInfo = new Map<string, { quarter: string; due_date: string | null }>();
     await Promise.all(
       programIds.map(async (programId) => {
-        const nextDueDate = await quarterDueDatesService.getNextDueDateForProgram(programId);
-        nextDueDates.set(programId, nextDueDate);
+        const info = await quarterDueDatesService.getCurrentQuarterDueInfoForProgram(programId);
+        quarterDueInfo.set(programId, info);
       })
     );
 
     return results.map((result) => {
       if (!result.program) return result;
 
-      const nextDueDate = nextDueDates.get(result.program.id) ?? null;
+      const info = quarterDueInfo.get(result.program.id) ?? { quarter: null, due_date: null };
       return {
         ...result,
         program: {
           ...result.program,
-          next_due_date: nextDueDate,
+          current_quarter: info.quarter,
+          current_quarter_due_date: info.due_date,
         },
       };
     });
