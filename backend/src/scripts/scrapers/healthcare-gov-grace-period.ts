@@ -10,8 +10,8 @@
  * Optional env:
  *   HEALTHCARE_GOV_GRACE_PERIOD_PROGRAM_ID — override program lookup
  *
- * After updating renewal_period_months, runs the same quarter due date backfill
- * as prisma/backfill_quarter_due_dates.ts for the given calendar year.
+ * After updating renewal_period_months, backfills program_quarter_due_dates for
+ * that program only (same logic as prisma/backfill_quarter_due_dates.ts).
  */
 import axios from 'axios';
 import * as cheerio from 'cheerio';
@@ -319,9 +319,14 @@ async function main() {
     );
   }
 
-  console.log(`Starting quarter due date backfill for year ${calendarYear}...`);
-  const summary = await quarterDueDatesService.backfillAllPrograms(calendarYear);
-  console.log('Backfill complete:', JSON.stringify(summary, null, 2));
+  console.log(
+    `Starting quarter due date backfill for ${program.id} (year ${calendarYear})...`
+  );
+  const backfillResults = await quarterDueDatesService.backfillProgramQuarters(
+    program.id,
+    calendarYear
+  );
+  console.log('Backfill complete:', JSON.stringify(backfillResults, null, 2));
 
   console.log('Completed successfully.');
 }
