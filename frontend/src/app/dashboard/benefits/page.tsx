@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import {
   Sparkles,
   RefreshCw,
-  Search,
   ArrowRight,
   CheckCircle2,
   Info,
@@ -28,10 +27,21 @@ import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
-import { formatCurrency, formatDate, getConfidenceColor, resolveQuarterYearForPdf } from "@/lib/utils";
+import {
+  formatCurrency,
+  formatDate,
+  getConfidenceColor,
+  getCurrentQuarterYear,
+  resolveQuarterYearForPdf,
+} from "@/lib/utils";
+
+const PROGRAM_SCOPE_OPTIONS = [
+  { value: "all", label: "All Programs" },
+  { value: "federal", label: "Federal" },
+  { value: "state", label: "State" },
+];
 
 const QUARTER_FILTER_OPTIONS = [
-  { value: "all", label: "All Quarters" },
   { value: "Q1", label: "Q1 (Jan–Mar)" },
   { value: "Q2", label: "Q2 (Apr–Jun)" },
   { value: "Q3", label: "Q3 (Jul–Sep)" },
@@ -66,29 +76,17 @@ function getProgramQuarterDueDisplay(
   } | null | undefined,
   quarterFilter: string
 ): { quarter: string | null; dueDate: string | null } {
-  if (quarterFilter !== "all") {
-    const dates = program?.quarter_due_dates?.[quarterFilter];
-    return {
-      quarter: quarterFilter,
-      dueDate: getRelevantDueDateInQuarter(dates),
-    };
-  }
-
+  const dates = program?.quarter_due_dates?.[quarterFilter];
   return {
-    quarter: program?.current_quarter ?? null,
-    dueDate: program?.current_quarter_due_date ?? null,
+    quarter: quarterFilter,
+    dueDate: getRelevantDueDateInQuarter(dates),
   };
 }
 
 export default function BenefitsPage() {
-  const [federalFilterActive, setFederalFilterActive] = useState(false);
-  const [stateFilterActive, setStateFilterActive] = useState(false);
-  const [stateInput, setStateInput] = useState("");
-  const [selectedStateCode, setSelectedStateCode] = useState<string | null>(null);
-  const [stateDropdownOpen, setStateDropdownOpen] = useState(false);
-  const stateComboboxRef = useRef<HTMLDivElement>(null);
-  const [quarterFilter, setQuarterFilter] = useState("all");
-  const [debouncedStateSearch, setDebouncedStateSearch] = useState("");
+  const [programScope, setProgramScope] = useState<"all" | "federal" | "state">("all");
+  const [selectedStateCode, setSelectedStateCode] = useState("");
+  const [quarterFilter, setQuarterFilter] = useState(() => getCurrentQuarterYear().quarter);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<any>(null);
   const queryClient = useQueryClient();
@@ -112,21 +110,12 @@ export default function BenefitsPage() {
 
   const filterParams = useMemo(
     () => ({
-      ...(federalFilterActive ? { federal: "true" } : {}),
-      ...(stateFilterActive ? { state_only: "true" } : {}),
+      ...(programScope === "federal" ? { federal: "true" } : {}),
+      ...(programScope === "state" ? { state_only: "true" } : {}),
       ...(selectedStateCode ? { state: selectedStateCode } : {}),
-      ...(!selectedStateCode && debouncedStateSearch.trim()
-        ? { state_search: debouncedStateSearch.trim() }
-        : {}),
-      ...(quarterFilter !== "all" ? { quarter: quarterFilter } : {}),
+      quarter: quarterFilter,
     }),
-    [
-      federalFilterActive,
-      stateFilterActive,
-      selectedStateCode,
-      debouncedStateSearch,
-      quarterFilter,
-    ]
+    [programScope, selectedStateCode, quarterFilter]
   );
 
   const pdfQuarterContext = useMemo(
@@ -145,7 +134,7 @@ export default function BenefitsPage() {
   const summary = data?.summary;
   const availableStateOptions = data?.availableStates ?? [];
   const profileState = data?.profileState ?? null;
-  const hasActiveStateFilter = !!(selectedStateCode || debouncedStateSearch.trim());
+  const hasActiveStateFilter = !!selectedStateCode;
 
   const scanMutation = useMutation({
     mutationFn: () => api.post("/api/eligibility/scan"),
@@ -153,21 +142,6 @@ export default function BenefitsPage() {
       queryClient.invalidateQueries({ queryKey: ["eligibility-results"] });
     },
   });
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedStateSearch(stateInput), 300);
-    return () => clearTimeout(timer);
-  }, [stateInput]);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (stateComboboxRef.current && !stateComboboxRef.current.contains(event.target as Node)) {
-        setStateDropdownOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   return (
     <div>
@@ -219,7 +193,7 @@ export default function BenefitsPage() {
         </motion.div>
       )}
 
-      {profileState && !hasActiveStateFilter && !federalFilterActive && !stateFilterActive && (
+      {profileState && !hasActiveStateFilter && programScope === "all" && (
         <p className="mb-4 text-sm text-on-surface-variant">
           Showing federal and {profileState} state programs based on your profile.
         </p>
@@ -233,105 +207,47 @@ export default function BenefitsPage() {
             Updating results...
           </div>
         )}
-        <button
-          type="button"
-          onClick={() => setFederalFilterActive((active) => !active)}
-          className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-            federalFilterActive
-              ? "bg-primary-100 text-primary-700 border border-primary-200"
-              : "bg-white border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container"
-          }`}
-        >
-          Federal
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setStateFilterActive((active) => !active)}
-          className={`px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap ${
-            stateFilterActive
-              ? "bg-primary-100 text-primary-700 border border-primary-200"
-              : "bg-white border border-outline-variant/30 text-on-surface-variant hover:bg-surface-container"
-          }`}
-        >
-          State
-        </button>
-
-        <div ref={stateComboboxRef} className="relative flex-1 min-w-[12rem]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant z-10" />
-          <input
-            type="text"
-            role="combobox"
-            aria-expanded={stateDropdownOpen}
-            aria-autocomplete="list"
-            placeholder="Search state (e.g. Georgia or GA)..."
-            value={stateInput}
-            onChange={(e) => {
-              setStateInput(e.target.value);
-              setSelectedStateCode(null);
-              setStateDropdownOpen(true);
-            }}
-            onFocus={() => setStateDropdownOpen(true)}
-            className="w-full pl-10 pr-16 py-2.5 rounded-lg border border-outline-variant/60 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-primary-300"
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            {(stateInput || selectedStateCode) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setStateInput("");
-                  setSelectedStateCode(null);
-                  setStateDropdownOpen(false);
-                }}
-                className="p-1 rounded-md text-on-surface-variant hover:bg-surface-container"
-                aria-label="Clear state search"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setStateDropdownOpen((open) => !open)}
-              className="p-1 rounded-md text-on-surface-variant hover:bg-surface-container"
-              aria-label="Toggle state options"
+        <div className="flex-1 min-w-[10rem]">
+          <label htmlFor="program-scope-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+            Program Type
+          </label>
+          <div className="relative">
+            <select
+              id="program-scope-filter"
+              value={programScope}
+              onChange={(e) => setProgramScope(e.target.value as "all" | "federal" | "state")}
+              className={selectClassName}
             >
-              <ChevronDown className={`w-4 h-4 transition-transform ${stateDropdownOpen ? "rotate-180" : ""}`} />
-            </button>
+              {PROGRAM_SCOPE_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
           </div>
+        </div>
 
-          {stateDropdownOpen && (
-            <ul
-              role="listbox"
-              className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-outline-variant/60 bg-white shadow-lg py-1"
+        <div className="flex-1 min-w-[10rem]">
+          <label htmlFor="state-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+            State
+          </label>
+          <div className="relative">
+            <select
+              id="state-filter"
+              value={selectedStateCode}
+              onChange={(e) => setSelectedStateCode(e.target.value)}
+              className={selectClassName}
             >
-              {availableStateOptions.length === 0 ? (
-                <li className="px-3 py-2 text-sm text-on-surface-variant">No matching states in your results</li>
-              ) : (
-                availableStateOptions.map((option: { code: string; label: string }) => (
-                  <li key={option.code}>
-                    <button
-                      type="button"
-                      role="option"
-                      aria-selected={selectedStateCode === option.code}
-                      onClick={() => {
-                        setSelectedStateCode(option.code);
-                        setStateInput(`${option.label} (${option.code})`);
-                        setStateDropdownOpen(false);
-                      }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-surface-container ${
-                        selectedStateCode === option.code
-                          ? "bg-primary-50 text-primary-700 font-medium"
-                          : "text-on-surface"
-                      }`}
-                    >
-                      <span>{option.label}</span>
-                      <span className="ml-2 text-on-surface-variant">{option.code}</span>
-                    </button>
-                  </li>
-                ))
-              )}
-            </ul>
-          )}
+              <option value="">All States</option>
+              {availableStateOptions.map((option: { code: string; label: string }) => (
+                <option key={option.code} value={option.code}>
+                  {option.label} ({option.code})
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+          </div>
         </div>
 
         <div className="flex-1 min-w-[10rem]">
