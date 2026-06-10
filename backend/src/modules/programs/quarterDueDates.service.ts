@@ -33,13 +33,12 @@ export function generateDueDatesForQuarter(
   quarter: Quarter,
   year: number
 ): { dueDates: string[]; source: QuarterDueDateSource | null } {
-  if (renewalPeriodMonths == null) {
-    return { dueDates: [], source: null };
-  }
+  // Unset renewal period defaults to monthly (last day of each month in the quarter).
+  const period = renewalPeriodMonths ?? 1;
 
   const months = QUARTER_MONTHS[quarter];
 
-  switch (renewalPeriodMonths) {
+  switch (period) {
     case 1:
       return {
         dueDates: months.map((month) => lastDayOfMonthIso(year, month)),

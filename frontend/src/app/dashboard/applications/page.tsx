@@ -173,24 +173,26 @@ export default function ApplicationsPage() {
                 )}
                 {app.status === "draft" && (
                   <div className="mt-3 pt-3 border-t border-surface-container-highest flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() =>
-                        handleGeneratePdf(
-                          app.program?.id,
-                          app.id,
-                          app.program?.name,
-                          currentQuarter,
-                          currentYear
-                        )
-                      }
-                      disabled={generatingPdfId === app.id}
-                      loading={generatingPdfId === app.id}
-                    >
-                      <FileText className="w-3.5 h-3.5 mr-1" />
-                      Generate PDF
-                    </Button>
+                    {(!app.generated_pdfs || app.generated_pdfs.length === 0) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() =>
+                          handleGeneratePdf(
+                            app.program?.id,
+                            app.id,
+                            app.program?.name,
+                            currentQuarter,
+                            currentYear
+                          )
+                        }
+                        disabled={generatingPdfId === app.id}
+                        loading={generatingPdfId === app.id}
+                      >
+                        <FileText className="w-3.5 h-3.5 mr-1" />
+                        Generate PDF
+                      </Button>
+                    )}
                     <Button 
                       size="sm" 
                       onClick={() => handlePrepareDraft(app)}
@@ -227,7 +229,14 @@ export default function ApplicationsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => downloadPdf(app.generated_pdfs[0].id, app.program?.name)}
+                        onClick={() =>
+                          downloadPdf(app.generated_pdfs[0].id, {
+                            programName: app.program?.name,
+                            quarter: app.generated_pdfs[0].quarter,
+                            year: app.generated_pdfs[0].year,
+                            version: app.generated_pdfs[0].version,
+                          })
+                        }
                         disabled={!!isViewing || !!isDownloading}
                         loading={isDownloading === app.generated_pdfs[0].id}
                       >
@@ -394,7 +403,9 @@ export default function ApplicationsPage() {
                     View PDF
                   </Button>
                   <Button
-                    onClick={() => downloadPdf(pdfModal.pdfId!, pdfModal.programName)}
+                    onClick={() =>
+                      downloadPdf(pdfModal.pdfId!, { programName: pdfModal.programName })
+                    }
                     disabled={!!isViewing || !!isDownloading}
                     loading={isDownloading === pdfModal.pdfId}
                     className="w-full sm:w-auto whitespace-nowrap px-2.5"

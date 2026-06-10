@@ -22,6 +22,17 @@ export interface ValidationReport {
   can_generate: boolean;
 }
 
+export function buildPdfFilename(
+  programName: string,
+  quarter: string | null | undefined,
+  year: number | null | undefined,
+  version: number
+): string {
+  const safeName = (programName || 'Application').replace(/\s+/g, '_');
+  const quarterPart = quarter && year ? `_${quarter}_${year}` : '';
+  return `${safeName}_Package${quarterPart}_v${version}.pdf`;
+}
+
 export class PdfService {
   private resolveQuarterYear(quarter?: string, year?: number): { quarter: Quarter; year: number } {
     const now = new Date();
@@ -633,6 +644,150 @@ Write the eligibility summary for this applicant's application packet.`;
     return { pdfBuffer, validationReport, uuid };
   }
 
+  // ─── Sync generated PDF into the documents vault ───────────────────────────
+  private async syncGeneratedPdfToVault(
+    userId: string,
+    pdfId: string,
+    applicationId: string | null,
+    programName: string,
+    file_url: string,
+    file_size: number,
+    quarter: Quarter,
+    year: number,
+    version: number
+  ): Promise<void> {
+    const displayName = buildPdfFilename(
+      programName,
+      quarter,
+      year,
+      Math.max(version, 1)
+    );
+    const vaultKey = `generated_pdf:${pdfId}`;
+
+    const existingDoc = await prisma.document.findFirst({
+      where: {
+        user_id: userId,
+        original_file_name: vaultKey,
+      },
+    });
+
+    if (existingDoc) {
+      await prisma.document.update({
+        where: { id: existingDoc.id },
+        data: {
+          display_name: displayName,
+          file_url,
+          file_size,
+          application_id: applicationId ?? existingDoc.application_id,
+        },
+      });
+      return;
+    }
+
+    await prisma.document.create({
+      data: {
+        user_id: userId,
+        application_id: applicationId,
+        document_type: 'application_package',
+        original_file_name: vaultKey,
+        display_name: displayName,
+        file_url,
+        file_size,
+        mime_type: 'application/pdf',
+      },
+    });
+  }
+
+  private async resolveApplicationId(
+    userId: string,
+    programId: string,
+    applicationId?: string
+  ): Promise<string | undefined> {
+    if (applicationId) return applicationId;
+
+    const existingApp = await prisma.application.findFirst({
+      where: { user_id: userId, program_id: programId },
+      orderBy: { last_updated_at: 'desc' },
+    });
+
+    return existingApp?.id;
+  }
+
+  // ─── Record a download (version = download count) ─────────────────────────
+  async recordDownload(pdfId: string): Promise<{ version: number; filename: string }> {
+    const pdf = await prisma.generatedPdf.findUnique({
+      where: { id: pdfId },
+      include: { program: { select: { name: true } } },
+    });
+    if (!pdf) throw new Error('PDF not found');
+
+    const newVersion = pdf.version + 1;
+    const updated = await prisma.generatedPdf.update({
+      where: { id: pdfId },
+      data: { version: newVersion },
+      include: { program: { select: { name: true } } },
+    });
+
+    const filename = buildPdfFilename(
+      updated.program?.name || 'Application',
+      updated.quarter,
+      updated.year,
+      newVersion
+    );
+
+    if (updated.quarter && updated.year) {
+      await this.syncGeneratedPdfToVault(
+        updated.user_id,
+        updated.id,
+        updated.application_id,
+        updated.program?.name || 'Application',
+        updated.file_url,
+        updated.file_size,
+        updated.quarter as Quarter,
+        updated.year,
+        newVersion
+      );
+    }
+
+    return { version: newVersion, filename };
+  }
+
+  async ensureVaultDocument(pdfId: string, userId: string): Promise<void> {
+    const pdf = await prisma.generatedPdf.findUnique({
+      where: { id: pdfId },
+      include: { program: { select: { name: true } } },
+    });
+    if (!pdf || pdf.user_id !== userId) {
+      throw new Error('PDF not found');
+    }
+    if (!pdf.quarter || pdf.year == null) {
+      throw new Error('PDF is missing quarter metadata');
+    }
+
+    let applicationId = pdf.application_id;
+    if (!applicationId) {
+      applicationId = (await this.resolveApplicationId(userId, pdf.program_id)) ?? null;
+      if (applicationId) {
+        await prisma.generatedPdf.update({
+          where: { id: pdfId },
+          data: { application_id: applicationId },
+        });
+      }
+    }
+
+    await this.syncGeneratedPdfToVault(
+      userId,
+      pdf.id,
+      applicationId,
+      pdf.program?.name || 'Application',
+      pdf.file_url,
+      pdf.file_size,
+      pdf.quarter as Quarter,
+      pdf.year,
+      pdf.version
+    );
+  }
+
   // ─── Main generation function ──────────────────────────────────────────────
   async generateApplicationPdf(
     userId: string,
@@ -642,6 +797,12 @@ Write the eligibility summary for this applicant's application packet.`;
     year?: number
   ): Promise<any> {
     const { quarter: resolvedQuarter, year: resolvedYear } = this.resolveQuarterYear(quarter, year);
+    const resolvedApplicationId = await this.resolveApplicationId(userId, programId, applicationId);
+
+    const program = await prisma.benefitProgram.findUnique({
+      where: { id: programId },
+      select: { name: true },
+    });
 
     const existing = await prisma.generatedPdf.findFirst({
       where: {
@@ -650,30 +811,33 @@ Write the eligibility summary for this applicant's application packet.`;
         quarter: resolvedQuarter,
         year: resolvedYear,
       },
-      orderBy: { version: 'desc' },
+      orderBy: { generated_at: 'desc' },
     });
-    const version = existing ? existing.version + 1 : 1;
 
-    const { pdfBuffer, validationReport, uuid } = await this.generatePdfBuffer(
+    // Version tracks download count; new/regenerated PDFs start at 0 until first download
+    const version = existing?.version ?? 0;
+    const pdfId = existing?.id ?? crypto.randomUUID();
+
+    const { pdfBuffer, validationReport } = await this.generatePdfBuffer(
       userId,
       programId,
-      applicationId,
-      undefined,
-      { version, quarter: resolvedQuarter, year: resolvedYear }
+      resolvedApplicationId,
+      pdfId,
+      { version: Math.max(version, 1), quarter: resolvedQuarter, year: resolvedYear }
     );
 
     // ── File persistence ────────────────────────────────────────────────────
     const isS3Placeholder = env.AWS_ACCESS_KEY_ID.includes('placeholder');
-    let file_url = '';
+    let file_url = existing?.file_url ?? '';
 
     if (isS3Placeholder) {
       const dir = path.join(process.cwd(), 'uploads', 'pdfs', userId);
       fs.mkdirSync(dir, { recursive: true });
-      const localPath = path.join(dir, `${uuid}.pdf`);
+      const localPath = path.join(dir, `${pdfId}.pdf`);
       fs.writeFileSync(localPath, pdfBuffer);
       file_url = localPath;
     } else {
-      const key = `pdfs/${userId}/${uuid}.pdf`;
+      const key = `pdfs/${userId}/${pdfId}.pdf`;
       await s3Client.send(new PutObjectCommand({
         Bucket: env.S3_BUCKET_NAME,
         Key: key,
@@ -683,22 +847,49 @@ Write the eligibility summary for this applicant's application packet.`;
       file_url = `https://${env.S3_BUCKET_NAME}.s3.${env.AWS_REGION}.amazonaws.com/${key}`;
     }
 
-    const generated = await prisma.generatedPdf.create({
-      data: {
-        id: uuid,
-        user_id: userId,
-        application_id: applicationId || null,
-        program_id: programId,
-        file_url,
-        file_size: pdfBuffer.length,
-        version,
-        quarter: resolvedQuarter,
-        year: resolvedYear,
-        status: 'generated',
-        validation_report: validationReport as any,
-      },
-      include: { program: true },
-    });
+    let generated;
+    if (existing) {
+      generated = await prisma.generatedPdf.update({
+        where: { id: existing.id },
+        data: {
+          application_id: resolvedApplicationId || existing.application_id,
+          file_url,
+          file_size: pdfBuffer.length,
+          validation_report: validationReport as any,
+          generated_at: new Date(),
+        },
+        include: { program: true },
+      });
+    } else {
+      generated = await prisma.generatedPdf.create({
+        data: {
+          id: pdfId,
+          user_id: userId,
+          application_id: resolvedApplicationId || null,
+          program_id: programId,
+          file_url,
+          file_size: pdfBuffer.length,
+          version: 0,
+          quarter: resolvedQuarter,
+          year: resolvedYear,
+          status: 'generated',
+          validation_report: validationReport as any,
+        },
+        include: { program: true },
+      });
+    }
+
+    await this.syncGeneratedPdfToVault(
+      userId,
+      generated.id,
+      resolvedApplicationId || generated.application_id,
+      program?.name || generated.program?.name || 'Application',
+      file_url,
+      pdfBuffer.length,
+      resolvedQuarter,
+      resolvedYear,
+      generated.version
+    );
 
     return generated;
   }

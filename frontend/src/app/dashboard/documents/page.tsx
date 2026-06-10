@@ -600,7 +600,11 @@ function DocumentsContent() {
         ) : !generatedPdfs || generatedPdfs.length === 0 ? (
           <div className="text-center py-12">
             <FileText className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
-            <p className="text-on-surface-variant">No generated packages found. Apply to programs to generate PDFs.</p>
+            <p className="text-on-surface-variant">
+              {pdfQuarterFilter !== "all"
+                ? `No PDF package generated for ${pdfQuarterFilter} ${defaultYear} yet. Filter a program on Benefits and click Generate PDF.`
+                : "No generated packages found. Apply to programs to generate PDFs."}
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -646,7 +650,14 @@ function DocumentsContent() {
                         <Eye className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => downloadPdf(pdf.id, pdf.program?.name)}
+                        onClick={() =>
+                          downloadPdf(pdf.id, {
+                            programName: pdf.program?.name,
+                            quarter: pdf.quarter,
+                            year: pdf.year,
+                            version: pdf.version,
+                          })
+                        }
                         disabled={!!isViewing || !!isDownloading}
                         title="Download PDF"
                         className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary-500 transition-colors"

@@ -1,5 +1,6 @@
 /**
  * Idempotent backfill for program_quarter_due_dates.
+ * Programs with no renewal_period_months are treated as monthly renewals.
  *
  * Usage:
  *   npx tsx prisma/backfill_quarter_due_dates.ts

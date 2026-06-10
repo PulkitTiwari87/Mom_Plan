@@ -27,3 +27,12 @@ export const pdfIdParamSchema = z.object({
     id: z.string().uuid('PDF ID must be a valid UUID'),
   }),
 });
+
+export const pdfStreamQuerySchema = z.object({
+  params: z.object({
+    id: z.string().uuid('PDF ID must be a valid UUID'),
+  }),
+  query: z.object({
+    record_download: z.enum(['true', 'false']).optional(),
+  }),
+});

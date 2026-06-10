@@ -91,6 +91,33 @@ export function formatPdfQuarterYear(pdf: { quarter?: string | null; year?: numb
   return "";
 }
 
+export function formatPdfFilename(
+  programName: string,
+  quarter?: string | null,
+  year?: number | null,
+  version?: number
+): string {
+  const safeName = (programName || "Application").replace(/\s+/g, "_");
+  const quarterPart = quarter && year ? `_${quarter}_${year}` : "";
+  const versionPart = version != null ? `_v${version}` : "";
+  return `${safeName}_Package${quarterPart}${versionPart}.pdf`;
+}
+
+function parseContentDispositionFilename(header: string | undefined): string | null {
+  if (!header) return null;
+  const match = header.match(/filename="([^"]+)"/);
+  return match?.[1] ?? null;
+}
+
+export function getDownloadFilenameFromResponse(
+  response: { headers?: Record<string, unknown> },
+  fallback: string
+): string {
+  const headers = response.headers;
+  const disposition = headers?.["content-disposition"] ?? headers?.["Content-Disposition"];
+  return parseContentDispositionFilename(typeof disposition === "string" ? disposition : undefined) ?? fallback;
+}
+
 export function getStatusLabel(status: string): string {
   const labels: Record<string, string> = {
     qualified: "Qualified",

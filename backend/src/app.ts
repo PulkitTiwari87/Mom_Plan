@@ -39,6 +39,7 @@ app.use(
   cors({
     origin: allowedOrigins,
     credentials: true, // Required so browsers send/receive httpOnly cookies
+    exposedHeaders: ['Content-Disposition', 'X-Pdf-Version'],
   })
 );
 

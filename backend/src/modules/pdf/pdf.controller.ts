@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { PdfService } from './pdf.service';
+import { PdfService, buildPdfFilename } from './pdf.service';
 import { UnauthorizedError, NotFoundError, ForbiddenError } from '../../utils/errors';
 import { env } from '../../config/env';
 import fs from 'fs';
@@ -72,9 +72,25 @@ export class PdfController {
         throw new ForbiddenError('Access denied');
       }
 
-      const fileName = `${pdf.program?.name || 'Application'}_Package.pdf`;
+      const recordDownload = req.query.record_download === 'true';
+      let fileName = buildPdfFilename(
+        pdf.program?.name || 'Application',
+        pdf.quarter,
+        pdf.year,
+        pdf.version
+      );
+
+      if (recordDownload) {
+        const { version, filename } = await pdfService.recordDownload(pdf.id);
+        fileName = filename;
+        res.setHeader('X-Pdf-Version', String(version));
+      }
+
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+      res.setHeader(
+        'Content-Disposition',
+        `${recordDownload ? 'attachment' : 'inline'}; filename="${fileName}"`
+      );
 
       // If it is an S3 URL, stream from S3
       if (pdf.file_url.startsWith('http://') || pdf.file_url.startsWith('https://')) {
@@ -158,6 +174,16 @@ export class PdfController {
 
       const stream = fs.createReadStream(filePath);
       stream.pipe(res);
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async syncVaultDocument(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      if (!req.user) throw new UnauthorizedError();
+      await pdfService.ensureVaultDocument(req.params.id, req.user.id);
+      res.status(200).json({ success: true, message: 'PDF synced to document vault' });
     } catch (error) {
       next(error);
     }

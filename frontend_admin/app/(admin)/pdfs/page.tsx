@@ -33,19 +33,30 @@ export default function PdfsPage() {
     }
   };
 
-  const handleDownload = async (pdfId: string, programName: string, applicantName: string) => {
+  const handleDownload = async (
+    pdfId: string,
+    programName: string,
+    quarter?: string | null,
+    year?: number | null,
+    version?: number
+  ) => {
     setLoadingPdfId(pdfId);
     try {
+      const safeName = (programName || "Application").replace(/\s+/g, "_");
+      const quarterPart = quarter && year ? `_${quarter}_${year}` : "";
+      const fallbackName = `${safeName}_Package${quarterPart}_v${(version ?? 0) + 1}.pdf`;
       const response = await api.get(`/api/pdf/${pdfId}/download/stream`, {
         responseType: "blob",
+        params: { record_download: "true" },
       });
+      const disposition = response.headers?.["content-disposition"];
+      const filename =
+        disposition?.match(/filename="([^"]+)"/)?.[1] ?? fallbackName;
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const cleanProgram = (programName || "Application").replace(/\s+/g, "_");
-      const cleanApplicant = (applicantName || "User").replace(/\s+/g, "_");
-      link.setAttribute("download", `${cleanProgram}_${cleanApplicant}_Package.pdf`);
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
@@ -155,7 +166,15 @@ export default function PdfsPage() {
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDownload(pdf.id, pdf.program?.name, pdf.user?.full_name)}
+                            onClick={() =>
+                              handleDownload(
+                                pdf.id,
+                                pdf.program?.name,
+                                pdf.quarter,
+                                pdf.year,
+                                pdf.version
+                              )
+                            }
                             disabled={loadingPdfId !== null}
                             title="Download PDF Package"
                             className="w-8 h-8 rounded-lg hover:bg-brand-500/15 text-slate-500 hover:text-brand-400 flex items-center justify-center transition-colors"

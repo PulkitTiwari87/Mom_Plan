@@ -129,6 +129,11 @@ export default function BenefitsPage() {
     ]
   );
 
+  const pdfQuarterContext = useMemo(
+    () => resolveQuarterYearForPdf(quarterFilter),
+    [quarterFilter]
+  );
+
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ["eligibility-results", filterParams],
     queryFn: () =>
@@ -386,7 +391,6 @@ export default function BenefitsPage() {
         <div className="grid md:grid-cols-2 gap-4">
           {results.map((result: any, i: number) => {
             const quarterDueDisplay = getProgramQuarterDueDisplay(result.program, quarterFilter);
-            const pdfQuarterContext = resolveQuarterYearForPdf(quarterFilter);
 
             return (
             <motion.div
@@ -458,7 +462,7 @@ export default function BenefitsPage() {
                     </span>
                   </div>
                   {["qualified", "likely_qualified"].includes(result.status) && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
                       <Button
                         variant="outline"
                         size="sm"
@@ -565,7 +569,9 @@ export default function BenefitsPage() {
                     View PDF
                   </Button>
                   <Button
-                    onClick={() => downloadPdf(pdfModal.pdfId!, pdfModal.programName)}
+                    onClick={() =>
+                      downloadPdf(pdfModal.pdfId!, { programName: pdfModal.programName })
+                    }
                     disabled={!!isViewing || !!isDownloading}
                     loading={isDownloading === pdfModal.pdfId}
                     className="w-full sm:w-auto whitespace-nowrap px-2.5"

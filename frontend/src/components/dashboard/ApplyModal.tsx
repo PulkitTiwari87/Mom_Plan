@@ -30,6 +30,17 @@ interface ApplyModalProps {
   pdfYear?: number;
 }
 
+function isApplicationPackageForQuarter(
+  doc: { document_type?: string; display_name?: string },
+  quarter?: string,
+  year?: number
+): boolean {
+  if (doc.document_type !== "application_package" || !quarter || year == null) {
+    return false;
+  }
+  return doc.display_name?.includes(`_${quarter}_${year}_`) ?? false;
+}
+
 export default function ApplyModal({
   isOpen,
   onClose,
@@ -76,12 +87,62 @@ export default function ApplyModal({
     enabled: isOpen,
   });
 
-  // Default-check all existing documents on load
+  // Fetch generated PDFs for the active quarter (fallback when not linked to application yet)
+  const { data: quarterPdfs } = useQuery({
+    queryKey: ["generated-pdfs", pdfQuarter, pdfYear],
+    queryFn: () =>
+      api
+        .get("/api/pdf", {
+          params: {
+            ...(pdfQuarter ? { quarter: pdfQuarter } : {}),
+            ...(pdfYear ? { year: pdfYear } : {}),
+          },
+        })
+        .then((r) => r.data.data),
+    enabled: isOpen,
+  });
+
+  const matchedApp = (applications || []).find((a: any) => a.id === applicationId);
+  const pdfPackage =
+    matchedApp?.generated_pdfs?.[0] ??
+    quarterPdfs?.find((p: any) => p.program_id === program?.id);
+
+  const packageVaultDoc = documents?.find(
+    (d: any) =>
+      d.document_type === "application_package" &&
+      pdfPackage &&
+      d.original_file_name === `generated_pdf:${pdfPackage.id}`
+  );
+
+  // Auto-select supporting vault docs; only select application_package for active quarter
   useEffect(() => {
-    if (documents) {
-      setSelectedDocIds(documents.map((d: any) => d.id));
-    }
-  }, [documents]);
+    if (!documents) return;
+
+    const ids = documents
+      .filter((d: any) => {
+        if (d.document_type === "application_package") {
+          return packageVaultDoc?.id === d.id;
+        }
+        return true;
+      })
+      .map((d: any) => d.id);
+
+    setSelectedDocIds(ids);
+    setAttachPdf(!!pdfPackage);
+  }, [documents, packageVaultDoc?.id, pdfPackage?.id]);
+
+  // Backfill vault entry for PDFs generated before vault sync existed
+  useEffect(() => {
+    if (!isOpen || !pdfPackage || packageVaultDoc) return;
+
+    api
+      .post(`/api/pdf/${pdfPackage.id}/sync-vault`)
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ["documents"] });
+        queryClient.invalidateQueries({ queryKey: ["applications"] });
+      })
+      .catch((err) => console.error("Failed to sync generated PDF to vault:", err));
+  }, [isOpen, pdfPackage?.id, packageVaultDoc?.id, queryClient]);
 
   // Ensure application draft exists and load email draft
   useEffect(() => {
@@ -108,7 +169,6 @@ export default function ApplyModal({
       const existing = (applications || []).find((a: any) => a.program_id === program.id);
       if (existing) {
         setApplicationId(existing.id);
-        setAttachPdf(existing.generated_pdfs && existing.generated_pdfs.length > 0);
         loadDraft(existing.id);
       } else {
         setIsGenerating(true);
@@ -116,7 +176,6 @@ export default function ApplyModal({
           const res = await api.post("/api/applications", { program_id: program.id });
           const newApp = res.data.data;
           setApplicationId(newApp.id);
-          setAttachPdf(newApp.generated_pdfs && newApp.generated_pdfs.length > 0);
           loadDraft(newApp.id);
           queryClient.invalidateQueries({ queryKey: ["applications"] });
         } catch (err) {
@@ -130,10 +189,6 @@ export default function ApplyModal({
       initApplication();
     } else {
       // Find matching application to check for generated pdf
-      const matched = (applications || []).find((a: any) => a.id === applicationId);
-      if (matched) {
-        setAttachPdf(matched.generated_pdfs && matched.generated_pdfs.length > 0);
-      }
       loadDraft(applicationId);
     }
   }, [isOpen, applicationId, program, applications]);
@@ -234,11 +289,21 @@ export default function ApplyModal({
     tax_return: "📊",
     proof_of_pregnancy: "🤰",
     custody_order: "⚖️",
+    application_package: "📄",
     other: "📄",
   };
 
-  const matchedApp = (applications || []).find((a: any) => a.id === applicationId);
-  const pdfPackage = matchedApp?.generated_pdfs?.[0];
+  const vaultDocuments = [...(documents || [])]
+    .filter((d: any) => {
+      if (d.document_type !== "application_package") return true;
+      if (!pdfQuarter || pdfYear == null) return true;
+      return isApplicationPackageForQuarter(d, pdfQuarter, pdfYear);
+    })
+    .sort((a: any, b: any) => {
+      if (a.document_type === "application_package") return -1;
+      if (b.document_type === "application_package") return 1;
+      return 0;
+    });
 
   return (
     <AnimatePresence>
@@ -416,15 +481,15 @@ export default function ApplyModal({
                           {/* Vault documents list */}
                           <div className="flex-1 overflow-y-auto p-3 space-y-2 max-h-[220px]">
                             <span className="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">
-                              From Documents Vault ({documents?.length || 0})
+                              From Documents Vault ({vaultDocuments.length})
                             </span>
 
-                            {!documents || documents.length === 0 ? (
+                            {!vaultDocuments || vaultDocuments.length === 0 ? (
                               <p className="text-xs text-on-surface-variant/70 italic text-center py-6">
                                 Your Document Vault is empty.
                               </p>
                             ) : (
-                              documents.map((doc: any) => (
+                              vaultDocuments.map((doc: any) => (
                                 <div
                                   key={doc.id}
                                   onClick={() => toggleDocument(doc.id)}

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { formatPdfFilename, getDownloadFilenameFromResponse } from "@/lib/utils";
 
 export interface ValidationReport {
   is_valid: boolean;
@@ -25,6 +26,13 @@ export interface PendingGenerateParams {
   programName?: string;
   quarter?: string;
   year?: number;
+}
+
+export interface PdfDownloadMeta {
+  programName?: string;
+  quarter?: string | null;
+  year?: number | null;
+  version?: number;
 }
 
 export function usePdfGeneration() {
@@ -102,12 +110,18 @@ export function usePdfGeneration() {
         programName,
       });
 
-      // Auto-trigger download right after successful generation
-      downloadPdf(pdfId, programName);
+      // Auto-trigger download right after successful generation (counts as v1)
+      downloadPdf(pdfId, {
+        programName,
+        quarter: res.data.data.quarter,
+        year: res.data.data.year,
+        version: res.data.data.version,
+      });
 
       // Invalidate applications query to update the UI across components
       queryClient.invalidateQueries({ queryKey: ["applications"] });
       queryClient.invalidateQueries({ queryKey: ["generated-pdfs"] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
     } catch (err) {
       console.error("Failed to generate PDF application packet:", err);
     } finally {
@@ -133,21 +147,33 @@ export function usePdfGeneration() {
     }
   };
 
-  const downloadPdf = async (pdfId: string, programName?: string) => {
+  const downloadPdf = async (pdfId: string, meta?: PdfDownloadMeta) => {
     setIsDownloading(pdfId);
     try {
+      const fallbackName = formatPdfFilename(
+        meta?.programName || "Application",
+        meta?.quarter,
+        meta?.year,
+        (meta?.version ?? 0) + 1
+      );
       const response = await api.get(`/api/pdf/${pdfId}/download/stream`, {
         responseType: "blob",
+        params: { record_download: "true" },
       });
+      const filename = getDownloadFilenameFromResponse(response, fallbackName);
       const blob = new Blob([response.data], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `${(programName || "Application").replace(/\s+/g, "_")}_Package.pdf`);
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.parentNode?.removeChild(link);
       setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      queryClient.invalidateQueries({ queryKey: ["generated-pdfs"] });
+      queryClient.invalidateQueries({ queryKey: ["documents"] });
     } catch (err) {
       console.error("Failed to download PDF:", err);
     } finally {
