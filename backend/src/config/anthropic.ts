@@ -12,6 +12,34 @@ export const callClaudeApi = async (systemPrompt: string, userPrompt: string): P
   if (isPlaceholder) {
     console.log('⚠️ Using mocked Anthropic Claude API due to placeholder key.');
     
+    if (
+      systemPrompt.includes('recurring payment, renewal, certification, reporting, or filing frequency') ||
+      userPrompt.includes('renewalPeriodMonths')
+    ) {
+      return JSON.stringify({
+        renewalPeriodMonths: 1,
+        confidence: 0.95,
+        reasoning:
+          'The page repeatedly references monthly premium payments and monthly premiums.',
+      });
+    }
+
+    if (
+      systemPrompt.includes('calendar years to IRS quarterly employment tax due dates') ||
+      userPrompt.includes('quarterIsoDates')
+    ) {
+      const yearMatch = userPrompt.match(/calendar year (\d{4})/);
+      const calendarYear = yearMatch ? Number(yearMatch[1]) : new Date().getUTCFullYear();
+      return JSON.stringify({
+        quarterIsoDates: {
+          q1: `${calendarYear}-04-30`,
+          q2: `${calendarYear}-07-31`,
+          q3: `${calendarYear}-10-31`,
+          q4: `${calendarYear + 1}-01-31`,
+        },
+      });
+    }
+
     // Determine if this is an email draft prompt or an eligibility scan prompt
     if (systemPrompt.includes('email') || systemPrompt.includes('automated government application')) {
       return `Dear Agency Representative,
