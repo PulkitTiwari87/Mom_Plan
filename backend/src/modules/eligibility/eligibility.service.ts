@@ -9,6 +9,8 @@ import {
   computeSummary,
   EligibilityResultsFilters,
   EligibilityResultsResponse,
+  filterStateOptions,
+  normalizeStateCode,
 } from './eligibility.filters';
 import {
   getQuarterForMonth,
@@ -217,14 +219,25 @@ export class EligibilityService {
     userId: string,
     filters?: EligibilityResultsFilters
   ): Promise<EligibilityResultsResponse> {
-    const results = await prisma.eligibilityResult.findMany({
-      where: { user_id: userId },
-      include: { program: true },
-      orderBy: { confidence_score: 'desc' },
-    });
+    const [results, user] = await Promise.all([
+      prisma.eligibilityResult.findMany({
+        where: { user_id: userId },
+        include: { program: true },
+        orderBy: { confidence_score: 'desc' },
+      }),
+      prisma.user.findUnique({
+        where: { id: userId },
+        include: { family_profile: true },
+      }),
+    ]);
 
-    const summary = computeSummary(results);
-    const availableStates = computeAvailableStates(results);
+    const profileState =
+      normalizeStateCode(user?.state) ?? normalizeStateCode(user?.family_profile?.state);
+
+    const filtersWithProfile: EligibilityResultsFilters = {
+      ...filters,
+      profileState,
+    };
 
     const referenceDate = new Date();
     const year = referenceDate.getUTCFullYear();
@@ -239,16 +252,31 @@ export class EligibilityService {
       );
     }
 
-    const filtered = applyEligibilityFilters(results, filters, quarterDueDatesByProgram);
+    const filtered = applyEligibilityFilters(
+      results,
+      filtersWithProfile,
+      quarterDueDatesByProgram
+    );
     const enrichedResults = await this.enrichResultsWithQuarterDueDates(
       filtered,
       quarterDueDatesByProgram
     );
 
+    const profileScopedResults = applyEligibilityFilters(
+      results,
+      { profileState },
+      quarterDueDatesByProgram
+    );
+    const availableStates = filterStateOptions(
+      computeAvailableStates(profileScopedResults),
+      filters?.stateSearch ?? ''
+    );
+
     return {
       results: enrichedResults,
-      summary,
+      summary: computeSummary(filtered),
       availableStates,
+      profileState: profileState ?? null,
     };
   }
 

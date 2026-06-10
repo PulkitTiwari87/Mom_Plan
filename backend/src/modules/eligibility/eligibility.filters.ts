@@ -1,6 +1,7 @@
 import { Quarter, QUARTERS } from '../programs/quarterDueDates.types';
 
 export interface EligibilityResultsFilters {
+  profileState?: string;
   federal?: boolean;
   stateOnly?: boolean;
   state?: string;
@@ -23,6 +24,7 @@ export interface EligibilityResultsResponse {
   results: unknown[];
   summary: EligibilityResultsSummary;
   availableStates: AvailableStateOption[];
+  profileState: string | null;
 }
 
 const US_STATES = [
@@ -60,6 +62,24 @@ type ResultLike = {
 
 export function getProgramStateCode(program: ProgramLike | null | undefined): string {
   return (program?.state_code ?? '').trim().toUpperCase();
+}
+
+export function normalizeStateCode(state: string | null | undefined): string | undefined {
+  const code = (state ?? '').trim().toUpperCase();
+  return code || undefined;
+}
+
+export function isFederalProgram(program: ProgramLike | null | undefined): boolean {
+  const fedOrState = (program?.federal_or_state ?? '').toLowerCase();
+  return fedOrState === 'federal' || fedOrState.includes('federal');
+}
+
+export function matchesProfileStateScope(
+  program: ProgramLike | null | undefined,
+  profileState: string
+): boolean {
+  if (isFederalProgram(program)) return true;
+  return getProgramStateCode(program) === profileState;
 }
 
 export function stateMatchesQuery(stateCode: string, query: string): boolean {
@@ -126,11 +146,14 @@ export function applyEligibilityFilters<T extends ResultLike>(
 
   let filtered = results;
 
+  if (filters.profileState) {
+    filtered = filtered.filter((result) =>
+      matchesProfileStateScope(result.program, filters.profileState!)
+    );
+  }
+
   if (filters.federal) {
-    filtered = filtered.filter((result) => {
-      const value = result.program?.federal_or_state;
-      return value != null && value.trim() !== '';
-    });
+    filtered = filtered.filter((result) => isFederalProgram(result.program));
   }
 
   if (filters.stateOnly) {

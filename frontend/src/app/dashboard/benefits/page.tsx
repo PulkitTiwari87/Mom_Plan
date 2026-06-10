@@ -144,6 +144,8 @@ export default function BenefitsPage() {
   const results = data?.results ?? [];
   const summary = data?.summary;
   const availableStateOptions = data?.availableStates ?? [];
+  const profileState = data?.profileState ?? null;
+  const hasActiveStateFilter = !!(selectedStateCode || debouncedStateSearch.trim());
 
   const scanMutation = useMutation({
     mutationFn: () => api.post("/api/eligibility/scan"),
@@ -151,16 +153,6 @@ export default function BenefitsPage() {
       queryClient.invalidateQueries({ queryKey: ["eligibility-results"] });
     },
   });
-
-  const filteredStateOptions = useMemo(() => {
-    if (!stateInput.trim()) return availableStateOptions;
-    const query = stateInput.trim().toLowerCase();
-    return availableStateOptions.filter(
-      (opt: { code: string; label: string }) =>
-        opt.code.toLowerCase().includes(query) ||
-        opt.label.toLowerCase().includes(query)
-    );
-  }, [availableStateOptions, stateInput]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedStateSearch(stateInput), 300);
@@ -225,6 +217,12 @@ export default function BenefitsPage() {
             </div>
           </Card>
         </motion.div>
+      )}
+
+      {profileState && !hasActiveStateFilter && !federalFilterActive && !stateFilterActive && (
+        <p className="mb-4 text-sm text-on-surface-variant">
+          Showing federal and {profileState} state programs based on your profile.
+        </p>
       )}
 
       {/* Filters */}
@@ -306,10 +304,10 @@ export default function BenefitsPage() {
               role="listbox"
               className="absolute z-20 mt-1 w-full max-h-56 overflow-y-auto rounded-lg border border-outline-variant/60 bg-white shadow-lg py-1"
             >
-              {filteredStateOptions.length === 0 ? (
+              {availableStateOptions.length === 0 ? (
                 <li className="px-3 py-2 text-sm text-on-surface-variant">No matching states in your results</li>
               ) : (
-                filteredStateOptions.map((option: { code: string; label: string }) => (
+                availableStateOptions.map((option: { code: string; label: string }) => (
                   <li key={option.code}>
                     <button
                       type="button"
@@ -458,7 +456,7 @@ export default function BenefitsPage() {
                   <div className="flex items-center gap-1">
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                     <span className="text-xs text-on-surface-variant capitalize">
-                      {result.program?.program_type?.replace(/_/g, " ")} program
+                      {result.program?.program_type?.replace(/_/g, " ")}
                     </span>
                   </div>
                   {["qualified", "likely_qualified"].includes(result.status) && (
