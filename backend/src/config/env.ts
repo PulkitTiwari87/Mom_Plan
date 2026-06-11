@@ -24,6 +24,9 @@ const envSchema = z.object({
   // ─── Auth ──────────────────────────────────────────────────────────
   JWT_SECRET: z.string().min(16, 'JWT_SECRET must be at least 16 characters'),
   JWT_REFRESH_SECRET: z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters'),
+  /** Passed to jsonwebtoken `expiresIn` (e.g. 15m, 1h, 7d) */
+  JWT_ACCESS_TOKEN_EXPIRES_IN: z.string().default('15m'),
+  JWT_REFRESH_TOKEN_EXPIRES_DAYS: z.coerce.number().int().positive().default(30),
   SUPABASE_URL: z.string().url('SUPABASE_URL must be a valid URL').optional(),
   SUPABASE_ANON_KEY: z.string().optional(),
 
@@ -61,6 +64,9 @@ if (!_env.success) {
 }
 
 export const env = _env.data;
+
+export const refreshTokenTtlMs =
+  env.JWT_REFRESH_TOKEN_EXPIRES_DAYS * 24 * 60 * 60 * 1000;
 
 function normalizeOrigin(url: string): string {
   return url.trim().replace(/\/$/, '');

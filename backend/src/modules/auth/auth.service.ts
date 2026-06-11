@@ -2,15 +2,12 @@ import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { prisma } from '../../config/prisma';
-import { env } from '../../config/env';
+import { env, refreshTokenTtlMs } from '../../config/env';
 import { BadRequestError, UnauthorizedError, NotFoundError } from '../../utils/errors';
 import { sendEmail } from '../../config/email';
 import { UserRole, UserPlan } from '@prisma/client';
 
 const resetTokensCache = new Map<string, string>();
-
-const ACCESS_TOKEN_TTL = '15m';
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 interface AccessTokenPayload {
   userId: string;
@@ -61,14 +58,14 @@ export class AuthService {
         plan: user.plan,
       },
       env.JWT_SECRET,
-      { expiresIn: ACCESS_TOKEN_TTL }
+      { expiresIn: env.JWT_ACCESS_TOKEN_EXPIRES_IN as jwt.SignOptions['expiresIn'] }
     );
   }
 
   private async createRefreshToken(userId: string): Promise<string> {
     const rawToken = generateOpaqueRefreshToken();
     const tokenHash = hashToken(rawToken);
-    const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+    const expiresAt = new Date(Date.now() + refreshTokenTtlMs);
 
     await prisma.refreshToken.create({
       data: {

@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AuthService } from './auth.service';
 import { UnauthorizedError } from '../../utils/errors';
-import { env } from '../../config/env';
+import { env, refreshTokenTtlMs } from '../../config/env';
 
 const authService = new AuthService();
 
@@ -11,7 +11,7 @@ const refreshCookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
   sameSite: 'lax' as const,
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  maxAge: refreshTokenTtlMs,
   path: '/api/auth',
 };
 
