@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 const REFRESH_COOKIE = "mp_rt";
 
+/** Headers to drop when proxying — fetch() already decompresses the body. */
+const STRIP_RESPONSE_HEADERS = new Set([
+  "content-encoding",
+  "content-length",
+  "transfer-encoding",
+  "connection",
+]);
+
 function normalizeBackendUrl(url: string): string {
   return url.trim().replace(/\/+$/, "");
 }
@@ -76,7 +84,8 @@ export async function proxyToBackend(
 
   const responseHeaders = new Headers();
   backendResponse.headers.forEach((value, key) => {
-    if (key.toLowerCase() === "set-cookie") return;
+    const lower = key.toLowerCase();
+    if (lower === "set-cookie" || STRIP_RESPONSE_HEADERS.has(lower)) return;
     responseHeaders.set(key, value);
   });
 
