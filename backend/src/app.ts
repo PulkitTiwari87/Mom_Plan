@@ -18,6 +18,7 @@ import notificationsRoutes from './modules/notifications/notifications.routes';
 import deadlinesRoutes from './modules/deadlines/deadlines.routes';
 import sessionsRoutes from './modules/sessions/sessions.routes';
 import billingRoutes from './modules/billing/billing.routes';
+import billingWebhookRoutes from './modules/billing/billing.webhook.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import pdfRoutes from './modules/pdf/pdf.routes';
 
@@ -41,12 +42,15 @@ app.use(
 // Parse httpOnly cookies (used for secure auth token storage)
 app.use(cookieParser());
 
-// Apply billing router before global body parsers to permit raw Buffer capture on /api/billing/webhook
-app.use('/api/billing', billingRoutes);
+// Stripe webhook must receive the raw body for signature verification
+app.use('/api/billing', billingWebhookRoutes);
 
 // Body Parsers
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Billing API routes (checkout, subscription, etc.) need parsed JSON bodies
+app.use('/api/billing', billingRoutes);
 
 // Apply General Rate Limiting to all general API surface endpoints
 app.use('/api', apiLimiter);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { useAuthStore } from "@/store/auth.store";
 import { getApiErrorMessage } from "@/lib/errors";
+import { completePlanSelection } from "@/lib/billing";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -26,6 +27,8 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const { login } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const plan = searchParams.get("plan");
 
   const {
     register,
@@ -42,6 +45,13 @@ export default function LoginPage() {
 
       if (user.role === "admin") {
         router.push("/admin");
+      } else if (plan === "community" || plan === "free" || plan === "partner" || plan === "network") {
+        const { redirect } = await completePlanSelection(plan);
+        if (redirect.startsWith("http")) {
+          window.location.href = redirect;
+        } else {
+          router.push(redirect);
+        }
       } else {
         router.push("/dashboard");
       }

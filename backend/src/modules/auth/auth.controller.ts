@@ -93,6 +93,8 @@ export class AuthController {
         },
       });
     } catch (error) {
+      // Invalid, expired, or revoked refresh token — clear cookie so client cannot retry it
+      clearRefreshCookie(res);
       next(error);
     }
   }

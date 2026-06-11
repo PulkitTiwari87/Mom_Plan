@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
 import { useAuthStore } from "@/store/auth.store";
 import { api } from "@/lib/api";
+import { completePlanSelection } from "@/lib/billing";
 import { getApiErrorMessage } from "@/lib/errors";
 
 const registerSchema = z
@@ -49,7 +50,7 @@ function RegisterForm() {
   const { setAuth } = useAuthStore();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const plan = searchParams.get("plan") || "free";
+  const plan = searchParams.get("plan") || "community";
 
   const {
     register,
@@ -74,7 +75,18 @@ function RegisterForm() {
       });
       const { user, accessToken } = response.data.data;
       setAuth(user, accessToken);
-      router.push("/dashboard");
+
+      const normalizedPlan = plan === "free" ? "community" : plan;
+      if (normalizedPlan === "community" || normalizedPlan === "partner" || normalizedPlan === "network") {
+        const { redirect } = await completePlanSelection(normalizedPlan);
+        if (redirect.startsWith("http")) {
+          window.location.href = redirect;
+        } else {
+          router.push(redirect);
+        }
+      } else {
+        router.push("/dashboard");
+      }
     } catch (err: unknown) {
       setError(getApiErrorMessage(err, "Registration failed. Please try again."));
     }
@@ -114,7 +126,7 @@ function RegisterForm() {
               </h1>
               <p className="text-sm text-on-surface-variant">
                 Start discovering benefits your family qualifies for{" "}
-                {plan !== "free" && (
+                {plan !== "community" && plan !== "free" && (
                   <span className="font-medium text-primary-600">
                     • {plan.charAt(0).toUpperCase() + plan.slice(1)} Plan
                   </span>
@@ -241,7 +253,10 @@ function RegisterForm() {
 
             <p className="text-center text-sm text-on-surface-variant mt-6">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary-500 hover:text-primary-600 font-semibold">
+              <Link
+                href={`/login?plan=${encodeURIComponent(plan)}`}
+                className="text-primary-500 hover:text-primary-600 font-semibold"
+              >
                 Sign in
               </Link>
             </p>

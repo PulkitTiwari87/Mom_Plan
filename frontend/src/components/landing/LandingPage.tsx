@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
+import { PricingCta } from "@/components/landing/PricingCta";
+import { HeroCarousel } from "@/components/landing/HeroCarousel";
 
 type PricingFeature = {
   text: string;
@@ -38,6 +40,7 @@ type PricingFeature = {
 
 type PricingPlan = {
   name: string;
+  planId: "community" | "partner" | "network" | "enterprise";
   icon: LucideIcon;
   price: string;
   period?: string;
@@ -162,6 +165,7 @@ const testimonials = [
 const pricingPlans: PricingPlan[] = [
   {
     name: "Community",
+    planId: "community",
     icon: Sprout,
     price: "$0",
     period: "/month",
@@ -180,11 +184,12 @@ const pricingPlans: PricingPlan[] = [
       { text: "Custom report export", included: false },
     ],
     cta: "Apply free",
-    href: "/register",
+    href: "/register?plan=community",
     ctaVariant: "outline",
   },
   {
     name: "Partner org",
+    planId: "partner",
     icon: Building2,
     price: "$299",
     period: "/month",
@@ -210,6 +215,7 @@ const pricingPlans: PricingPlan[] = [
   },
   {
     name: "Network",
+    planId: "network",
     icon: Globe2,
     price: "$749",
     period: "/month",
@@ -233,6 +239,7 @@ const pricingPlans: PricingPlan[] = [
   },
   {
     name: "Government & enterprise",
+    planId: "enterprise",
     icon: Landmark,
     price: "Custom",
     description: "For state agencies, county human services & health systems",
@@ -328,8 +335,10 @@ function GhostLink({
 export default function LandingPage() {
   return (
     <main className="overflow-hidden" suppressHydrationWarning>
+      <HeroCarousel />
+
       {/* ── Hero ── */}
-      <section className="relative min-h-screen flex items-center justify-center pt-24 pb-16">
+      <section className="relative flex min-h-[calc(100vh-240px)] items-center justify-center pb-16 pt-12 sm:min-h-[calc(100vh-320px)] md:min-h-[calc(100vh-400px)] lg:min-h-[calc(100vh-460px)]">
         {/* Background */}
         <div className="absolute inset-0 bg-gradient-hero" />
         <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-primary-100/40 rounded-full blur-[120px] -translate-y-1/4 translate-x-1/4 pointer-events-none" />
@@ -906,18 +915,12 @@ export default function LandingPage() {
                       ))}
                     </ul>
 
-                    <Link
+                    <PricingCta
+                      planId={plan.planId}
+                      label={plan.cta}
                       href={plan.href}
-                      className={cn(
-                        "inline-flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold transition-all duration-200",
-                        plan.ctaVariant === "solid"
-                          ? "bg-gradient-primary text-white shadow-primary hover:shadow-primary-lg"
-                          : "border border-outline-variant bg-white text-on-surface hover:bg-surface-container-low hover:border-primary-200"
-                      )}
-                    >
-                      {plan.cta}
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
+                      variant={plan.ctaVariant}
+                    />
                   </Card>
                 </motion.div>
               );

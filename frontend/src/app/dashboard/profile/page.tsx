@@ -319,7 +319,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-on-surface-variant">{user?.email}</span>
-            <PlanBadge plan={user?.plan || "free"} />
+            <PlanBadge plan={user?.plan || "community"} />
           </div>
         </div>
       </motion.div>

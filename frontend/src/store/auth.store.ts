@@ -2,8 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import {
   api,
-  clearInMemoryToken,
   refreshAccessToken,
+  revokeSession,
   setInMemoryToken,
 } from "@/lib/api";
 
@@ -12,7 +12,7 @@ export interface AuthUser {
   email: string;
   full_name: string;
   role: "user" | "admin" | "counselor";
-  plan: "free" | "family" | "navigator";
+  plan: "community" | "partner" | "network";
   phone?: string;
   state?: string;
   zip_code?: string;
@@ -79,6 +79,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<AuthUser>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<boolean>;
+  ensureSession: () => Promise<boolean>;
   updateUser: (user: Partial<AuthUser>) => void;
   setHydrated: () => void;
   setInitializing: (value: boolean) => void;
@@ -117,19 +118,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       logout: async () => {
-        try {
-          await api.post("/api/auth/logout");
-        } catch {
-          // Clear local session even if server logout fails
-        } finally {
-          clearInMemoryToken();
-          set((state) => ({
-            user: null,
-            accessToken: null,
-            isAuthenticated: false,
-            authGeneration: state.authGeneration + 1,
-          }));
-        }
+        await revokeSession();
       },
 
       refreshSession: async () => {
@@ -144,19 +133,10 @@ export const useAuthStore = create<AuthState>()(
           }
 
           if (!result) {
-            // Login completed during refresh — keep the new session
             if (get().accessToken) {
               return get().isAuthenticated;
             }
-            // Only clear stale persisted auth, not anonymous visitors
-            if (get().isAuthenticated) {
-              clearInMemoryToken();
-              set({
-                user: null,
-                accessToken: null,
-                isAuthenticated: false,
-              });
-            }
+            await revokeSession();
             return false;
           }
 
@@ -193,16 +173,16 @@ export const useAuthStore = create<AuthState>()(
           if (get().accessToken) {
             return get().isAuthenticated;
           }
-          if (get().isAuthenticated) {
-            clearInMemoryToken();
-            set({
-              user: null,
-              accessToken: null,
-              isAuthenticated: false,
-            });
-          }
-          return false;
+          return get().isAuthenticated;
         }
+      },
+
+      ensureSession: async () => {
+        const state = get();
+        if (state.accessToken && typeof window !== "undefined" && window.__momplan_access_token__) {
+          return true;
+        }
+        return get().refreshSession();
       },
 
       updateUser: (partial) =>

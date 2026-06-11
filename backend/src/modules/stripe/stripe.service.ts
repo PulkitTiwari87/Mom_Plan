@@ -15,7 +15,7 @@ export class StripeService {
     successUrl?: string,
     cancelUrl?: string
   ) {
-    if (plan === UserPlan.free) {
+    if (plan === UserPlan.community) {
       throw new BadRequestError('Cannot create a checkout session for the free plan');
     }
 
@@ -29,12 +29,12 @@ export class StripeService {
     }
 
     // Determine pricing configuration
-    const unitAmount = plan === UserPlan.navigator ? 2900 : 1000; // $29.00 or $10.00
-    const productName = plan === UserPlan.navigator ? 'MomPlan Navigator Plan' : 'MomPlan Family Plan';
+    const unitAmount = plan === UserPlan.network ? 898800 : 358800;
+    const productName = plan === UserPlan.network ? 'MomPlan Network Plan' : 'MomPlan Partner Org Plan';
     const productDescription =
-      plan === UserPlan.navigator
-        ? 'Advanced eligibility management and dedicated counselor support'
-        : 'Full access to family profile analysis and benefits tracking';
+      plan === UserPlan.network
+        ? 'Multi-site organization and coalition features'
+        : 'Full caseworker dashboard and organization admin features';
 
     const defaultSuccessUrl = `${env.FRONTEND_URL}/dashboard?checkout=success`;
     const defaultCancelUrl = `${env.FRONTEND_URL}/pricing?checkout=cancel`;
@@ -169,7 +169,7 @@ export class StripeService {
             await prisma.user.updateMany({
               where: { stripe_customer_id: customerId },
               data: {
-                plan: UserPlan.free,
+                plan: UserPlan.community,
                 stripe_subscription_id: null,
               },
             });
@@ -186,7 +186,7 @@ export class StripeService {
           await prisma.user.updateMany({
             where: { stripe_customer_id: customerId },
             data: {
-              plan: UserPlan.free,
+              plan: UserPlan.community,
               stripe_subscription_id: null,
             },
           });

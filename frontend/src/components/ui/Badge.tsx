@@ -78,27 +78,39 @@ export function StatusBadge({ status, className }: BadgeProps) {
 }
 
 interface PlanBadgeProps {
-  plan: "free" | "family" | "navigator";
+  plan: "community" | "partner" | "network" | "free" | "family" | "navigator";
   className?: string;
 }
 
 const planStyles: Record<string, string> = {
+  community: "bg-gray-100 text-gray-600",
   free: "bg-gray-100 text-gray-600",
+  partner: "bg-primary-50 text-primary-700",
   family: "bg-primary-50 text-primary-700",
+  network: "bg-gradient-primary text-white",
   navigator: "bg-gradient-primary text-white",
 };
 
 export function PlanBadge({ plan, className }: PlanBadgeProps) {
-  const labels = { free: "Free", family: "Family", navigator: "Navigator" };
+  const labels: Record<string, string> = {
+    community: "Community",
+    free: "Community",
+    partner: "Partner Org",
+    family: "Partner Org",
+    network: "Network",
+    navigator: "Network",
+  };
+  const normalized =
+    plan === "free" ? "community" : plan === "family" ? "partner" : plan === "navigator" ? "network" : plan;
   return (
     <span
       className={cn(
         "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold",
-        planStyles[plan],
+        planStyles[normalized] ?? planStyles.community,
         className
       )}
     >
-      {labels[plan]}
+      {labels[normalized as keyof typeof labels] ?? normalized}
     </span>
   );
 }
