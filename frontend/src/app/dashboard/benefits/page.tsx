@@ -86,7 +86,7 @@ function getProgramQuarterDueDisplay(
 export default function BenefitsPage() {
   const [programScope, setProgramScope] = useState<"all" | "federal" | "state">("all");
   const [selectedStateCode, setSelectedStateCode] = useState("");
-  const [quarterFilter, setQuarterFilter] = useState(() => getCurrentQuarterYear().quarter);
+  const [quarterFilter, setQuarterFilter] = useState<string>(() => getCurrentQuarterYear().quarter);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<any>(null);
   const queryClient = useQueryClient();
