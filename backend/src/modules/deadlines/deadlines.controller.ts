@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { DeadlinesService } from './deadlines.service';
+import { getQuarterForMonth } from '../programs/quarterDueDates.service';
+import { Quarter } from '../programs/quarterDueDates.types';
 import { UnauthorizedError } from '../../utils/errors';
 
 const deadlinesService = new DeadlinesService();
@@ -9,8 +11,25 @@ export class DeadlinesController {
     try {
       if (!req.user) throw new UnauthorizedError();
       const type = (req.query.type as 'all' | 'federal' | 'state') || 'all';
-      const quarter = (req.query.quarter as 'all' | 'Q1' | 'Q2' | 'Q3' | 'Q4') || 'all';
-      const data = await deadlinesService.getDashboard(req.user.id, { type, quarter });
+      const quarterParam = req.query.quarter;
+      const quarter: Quarter =
+        typeof quarterParam === 'string' &&
+        ['Q1', 'Q2', 'Q3', 'Q4'].includes(quarterParam)
+          ? (quarterParam as Quarter)
+          : getQuarterForMonth(new Date().getUTCMonth() + 1);
+      const yearParam = req.query.year;
+      let year: number | 'all' = 'all';
+      if (yearParam !== 'all' && yearParam !== undefined && yearParam !== '') {
+        const parsed = Number.parseInt(String(yearParam), 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          year = parsed;
+        }
+      }
+      const data = await deadlinesService.getDashboard(req.user.id, {
+        type,
+        year,
+        quarter,
+      });
       res.status(200).json({ success: true, data });
     } catch (error) {
       next(error);

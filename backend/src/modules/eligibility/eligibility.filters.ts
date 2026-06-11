@@ -1,3 +1,8 @@
+import {
+  getQuarterForMonth,
+  programHasMatchingQuarterData,
+  QuarterDueDatesByProgramAndYear,
+} from '../programs/quarterDueDates.service';
 import { Quarter, QUARTERS } from '../programs/quarterDueDates.types';
 
 export interface EligibilityResultsFilters {
@@ -6,7 +11,8 @@ export interface EligibilityResultsFilters {
   stateOnly?: boolean;
   state?: string;
   stateSearch?: string;
-  quarter?: Quarter | 'all';
+  year?: number | 'all';
+  quarter?: Quarter;
 }
 
 export interface EligibilityResultsSummary {
@@ -24,6 +30,7 @@ export interface EligibilityResultsResponse {
   results: unknown[];
   summary: EligibilityResultsSummary;
   availableStates: AvailableStateOption[];
+  availableYears: number[];
   profileState: string | null;
 }
 
@@ -140,7 +147,7 @@ export function filterStateOptions(
 export function applyEligibilityFilters<T extends ResultLike>(
   results: T[],
   filters?: EligibilityResultsFilters,
-  quarterDueDatesByProgram?: Map<string, Partial<Record<Quarter, string[]>>>
+  quarterDueDatesByProgramAndYear?: QuarterDueDatesByProgramAndYear
 ): T[] {
   if (!filters) return results;
 
@@ -172,14 +179,27 @@ export function applyEligibilityFilters<T extends ResultLike>(
     );
   }
 
-  if (filters.quarter && filters.quarter !== 'all' && quarterDueDatesByProgram) {
-    filtered = filtered.filter((result) => {
-      const quarterDates = quarterDueDatesByProgram.get(result.program_id)?.[filters.quarter as Quarter];
-      return Array.isArray(quarterDates) && quarterDates.length > 0;
-    });
+  const yearFilter = filters.year ?? 'all';
+  const quarterFilter =
+    filters.quarter ?? getQuarterForMonth(new Date().getUTCMonth() + 1);
+
+  if (quarterDueDatesByProgramAndYear) {
+    filtered = filtered.filter((result) =>
+      programHasMatchingQuarterData(
+        quarterDueDatesByProgramAndYear.get(result.program_id),
+        yearFilter,
+        quarterFilter
+      )
+    );
   }
 
   return filtered;
+}
+
+function parseYearFilter(value: unknown): number | 'all' {
+  if (value === 'all' || value === undefined || value === '') return 'all';
+  const parsed = typeof value === 'string' ? Number.parseInt(value, 10) : Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 'all';
 }
 
 export function parseEligibilityResultsFilters(query: Record<string, unknown>): EligibilityResultsFilters {
@@ -187,7 +207,7 @@ export function parseEligibilityResultsFilters(query: Record<string, unknown>): 
   const validQuarter =
     quarter && (QUARTERS as readonly string[]).includes(quarter)
       ? (quarter as Quarter)
-      : undefined;
+      : getQuarterForMonth(new Date().getUTCMonth() + 1);
 
   return {
     federal: query.federal === 'true' || query.federal === true,
@@ -197,6 +217,7 @@ export function parseEligibilityResultsFilters(query: Record<string, unknown>): 
       typeof query.state_search === 'string' && query.state_search.trim()
         ? query.state_search.trim()
         : undefined,
-    quarter: validQuarter ?? 'all',
+    year: parseYearFilter(query.year),
+    quarter: validQuarter,
   };
 }

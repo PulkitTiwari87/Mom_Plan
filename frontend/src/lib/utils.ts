@@ -61,12 +61,161 @@ export function getConfidenceColor(score: number): string {
 export type Quarter = "Q1" | "Q2" | "Q3" | "Q4";
 
 export const QUARTER_FILTER_OPTIONS = [
-  { value: "all", label: "All Quarters" },
   { value: "Q1", label: "Q1 (Jan–Mar)" },
   { value: "Q2", label: "Q2 (Apr–Jun)" },
   { value: "Q3", label: "Q3 (Jul–Sep)" },
   { value: "Q4", label: "Q4 (Oct–Dec)" },
 ] as const;
+
+export type QuarterDueDatesByYear = Record<number, Partial<Record<Quarter, string[]>>>;
+
+export function buildYearFilterOptions(availableYears: number[]) {
+  return [
+    { value: "all", label: "All Years" },
+    ...availableYears.map((year) => ({ value: String(year), label: String(year) })),
+  ];
+}
+
+function flattenQuarterRecords(
+  quarterDueDatesByYear: QuarterDueDatesByYear | undefined
+): Array<{ year: number; quarter: Quarter; dueDates: string[] }> {
+  if (!quarterDueDatesByYear) return [];
+
+  const records: Array<{ year: number; quarter: Quarter; dueDates: string[] }> = [];
+  for (const [yearStr, quarters] of Object.entries(quarterDueDatesByYear)) {
+    const year = Number(yearStr);
+    if (!Number.isFinite(year)) continue;
+
+    for (const [quarter, dueDates] of Object.entries(quarters ?? {})) {
+      if (!dueDates?.length) continue;
+      records.push({ year, quarter: quarter as Quarter, dueDates });
+    }
+  }
+  return records;
+}
+
+function getRelevantDueDateInQuarter(
+  dueDates: string[],
+  referenceDate: Date = new Date()
+): string | null {
+  if (dueDates.length === 0) return null;
+
+  const todayUtc = Date.UTC(
+    referenceDate.getUTCFullYear(),
+    referenceDate.getUTCMonth(),
+    referenceDate.getUTCDate()
+  );
+
+  const sorted = [...dueDates].sort();
+  for (const dateStr of sorted) {
+    const parsed = new Date(`${dateStr}T00:00:00.000Z`);
+    if (!Number.isNaN(parsed.getTime()) && parsed.getTime() >= todayUtc) {
+      return dateStr;
+    }
+  }
+
+  return sorted[sorted.length - 1] ?? null;
+}
+
+function getNextUpcomingDueDateFromRecords(
+  records: Array<{ year: number; quarter: Quarter; dueDates: string[] }>,
+  referenceDate: Date = new Date()
+): string | null {
+  const todayUtc = Date.UTC(
+    referenceDate.getUTCFullYear(),
+    referenceDate.getUTCMonth(),
+    referenceDate.getUTCDate()
+  );
+
+  const allDates = records
+    .flatMap((record) => record.dueDates)
+    .map((dateStr) => new Date(`${dateStr}T00:00:00.000Z`))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  for (const date of allDates) {
+    if (date.getTime() >= todayUtc) {
+      return date.toISOString().slice(0, 10);
+    }
+  }
+
+  return null;
+}
+
+function getMostRecentPastDueDateFromRecords(
+  records: Array<{ year: number; quarter: Quarter; dueDates: string[] }>,
+  referenceDate: Date = new Date()
+): string | null {
+  const todayUtc = Date.UTC(
+    referenceDate.getUTCFullYear(),
+    referenceDate.getUTCMonth(),
+    referenceDate.getUTCDate()
+  );
+
+  const allDates = records
+    .flatMap((record) => record.dueDates)
+    .map((dateStr) => new Date(`${dateStr}T00:00:00.000Z`))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((a, b) => b.getTime() - a.getTime());
+
+  for (const date of allDates) {
+    if (date.getTime() < todayUtc) {
+      return date.toISOString().slice(0, 10);
+    }
+  }
+
+  return null;
+}
+
+function getPrimaryDueDateFromRecords(
+  records: Array<{ year: number; quarter: Quarter; dueDates: string[] }>,
+  yearFilter: string,
+  quarterFilter: string,
+  referenceDate: Date = new Date()
+): string | null {
+  const year = yearFilter === "all" ? "all" : Number(yearFilter);
+  const quarter = quarterFilter as Quarter;
+
+  const filtered = records.filter((record) => {
+    if (year !== "all" && record.year !== year) return false;
+    if (record.quarter !== quarter) return false;
+    return true;
+  });
+
+  if (filtered.length === 0) return null;
+
+  const quarterDates = filtered.flatMap((record) => record.dueDates);
+  return getRelevantDueDateInQuarter(quarterDates, referenceDate);
+}
+
+export function getProgramDueDateDisplay(
+  quarterDueDatesByYear: QuarterDueDatesByYear | undefined,
+  yearFilter: string,
+  quarterFilter: string
+): { quarter: string | null; year: number | null; dueDate: string | null } {
+  const records = flattenQuarterRecords(quarterDueDatesByYear);
+  const dueDate = getPrimaryDueDateFromRecords(records, yearFilter, quarterFilter);
+  if (!dueDate) {
+    return { quarter: null, year: null, dueDate: null };
+  }
+
+  const parsed = new Date(`${dueDate}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return { quarter: null, year: null, dueDate: null };
+  }
+
+  const month = parsed.getUTCMonth() + 1;
+  let quarter: Quarter = "Q4";
+  if (month <= 3) quarter = "Q1";
+  else if (month <= 6) quarter = "Q2";
+  else if (month <= 9) quarter = "Q3";
+
+  return {
+    quarter,
+    year: parsed.getUTCFullYear(),
+    dueDate,
+  };
+}
 
 export function getCurrentQuarterYear(): { quarter: Quarter; year: number } {
   const now = new Date();
@@ -78,12 +227,17 @@ export function getCurrentQuarterYear(): { quarter: Quarter; year: number } {
   return { quarter, year: now.getUTCFullYear() };
 }
 
-export function resolveQuarterYearForPdf(quarterFilter: string): { quarter: Quarter; year: number } {
+export function resolveQuarterYearForPdf(
+  quarterFilter: string,
+  yearFilter: string = "all"
+): { quarter: Quarter; year: number } {
   const current = getCurrentQuarterYear();
-  if (quarterFilter !== "all" && ["Q1", "Q2", "Q3", "Q4"].includes(quarterFilter)) {
-    return { quarter: quarterFilter as Quarter, year: current.year };
-  }
-  return current;
+  const quarter = ["Q1", "Q2", "Q3", "Q4"].includes(quarterFilter)
+    ? (quarterFilter as Quarter)
+    : current.quarter;
+  const parsedYear = yearFilter === "all" ? NaN : Number(yearFilter);
+  const year = Number.isFinite(parsedYear) ? parsedYear : current.year;
+  return { quarter, year };
 }
 
 export function formatPdfQuarterYear(pdf: { quarter?: string | null; year?: number | null }): string {

@@ -13,11 +13,13 @@ import {
   normalizeStateCode,
 } from './eligibility.filters';
 import {
+  buildQuarterDueDatesByProgramAndYear,
+  getAvailableYearsFromProgramYearMap,
   getQuarterForMonth,
   getRelevantDueDateInQuarter,
-  quarterDueDatesService,
+  quarterDueDatesByYearToObject,
+  QuarterDueDatesByProgramAndYear,
 } from '../programs/quarterDueDates.service';
-import { Quarter } from '../programs/quarterDueDates.types';
 
 export class EligibilityService {
   private anthropic: Anthropic;
@@ -239,33 +241,38 @@ export class EligibilityService {
       profileState,
     };
 
-    const referenceDate = new Date();
-    const year = referenceDate.getUTCFullYear();
-    const needsQuarterData = filters?.quarter && filters.quarter !== 'all';
+    const programIds = results.map((result) => result.program_id);
+    const quarterRecords =
+      programIds.length > 0
+        ? await prisma.programQuarterDueDate.findMany({
+            where: { program_id: { in: programIds } },
+            select: {
+              program_id: true,
+              year: true,
+              quarter: true,
+              due_dates_json: true,
+            },
+          })
+        : [];
 
-    let quarterDueDatesByProgram: Map<string, Partial<Record<Quarter, string[]>>> | undefined;
-    if (needsQuarterData) {
-      const programIds = results.map((result) => result.program_id);
-      quarterDueDatesByProgram = await quarterDueDatesService.getQuarterDueDatesByProgramForYear(
-        programIds,
-        year
-      );
-    }
+    const quarterDueDatesByProgramAndYear =
+      buildQuarterDueDatesByProgramAndYear(quarterRecords);
+    const availableYears = getAvailableYearsFromProgramYearMap(quarterDueDatesByProgramAndYear);
 
     const filtered = applyEligibilityFilters(
       results,
       filtersWithProfile,
-      quarterDueDatesByProgram
+      quarterDueDatesByProgramAndYear
     );
-    const enrichedResults = await this.enrichResultsWithQuarterDueDates(
+    const enrichedResults = this.enrichResultsWithQuarterDueDates(
       filtered,
-      quarterDueDatesByProgram
+      quarterDueDatesByProgramAndYear
     );
 
     const profileScopedResults = applyEligibilityFilters(
       results,
       { profileState },
-      quarterDueDatesByProgram
+      quarterDueDatesByProgramAndYear
     );
     const availableStates = filterStateOptions(
       computeAvailableStates(profileScopedResults),
@@ -276,6 +283,7 @@ export class EligibilityService {
       results: enrichedResults,
       summary: computeSummary(filtered),
       availableStates,
+      availableYears,
       profileState: profileState ?? null,
     };
   }
@@ -293,33 +301,41 @@ export class EligibilityService {
 
     if (!result) return null;
 
-    const [enriched] = await this.enrichResultsWithQuarterDueDates([result]);
+    const quarterRecords = await prisma.programQuarterDueDate.findMany({
+      where: { program_id: programId },
+      select: {
+        program_id: true,
+        year: true,
+        quarter: true,
+        due_dates_json: true,
+      },
+    });
+    const quarterDueDatesByProgramAndYear =
+      buildQuarterDueDatesByProgramAndYear(quarterRecords);
+    const [enriched] = this.enrichResultsWithQuarterDueDates(
+      [result],
+      quarterDueDatesByProgramAndYear
+    );
     return enriched;
   }
 
-  private async enrichResultsWithQuarterDueDates<
+  private enrichResultsWithQuarterDueDates<
     T extends { program: { id: string } | null }
   >(
     results: T[],
-    existingQuarterDueDatesByProgram?: Map<string, Partial<Record<Quarter, string[]>>>
+    quarterDueDatesByProgramAndYear: QuarterDueDatesByProgramAndYear
   ) {
-    const programIds = [
-      ...new Set(results.map((result) => result.program?.id).filter(Boolean) as string[]),
-    ];
-
     const referenceDate = new Date();
     const year = referenceDate.getUTCFullYear();
     const currentQuarter = getQuarterForMonth(referenceDate.getUTCMonth() + 1);
 
-    const quarterDueDatesByProgram =
-      existingQuarterDueDatesByProgram ??
-      (await quarterDueDatesService.getQuarterDueDatesByProgramForYear(programIds, year));
-
     return results.map((result) => {
       if (!result.program) return result;
 
-      const quarterDueDates = quarterDueDatesByProgram.get(result.program.id) ?? {};
-      const currentQuarterDates = quarterDueDates[currentQuarter] ?? [];
+      const yearMap = quarterDueDatesByProgramAndYear.get(result.program.id);
+      const quarterDueDatesByYear = quarterDueDatesByYearToObject(yearMap);
+      const currentYearQuarters = yearMap?.get(year) ?? {};
+      const currentQuarterDates = currentYearQuarters[currentQuarter] ?? [];
 
       return {
         ...result,
@@ -330,7 +346,8 @@ export class EligibilityService {
             currentQuarterDates,
             referenceDate
           ),
-          quarter_due_dates: quarterDueDates,
+          quarter_due_dates: currentYearQuarters,
+          quarter_due_dates_by_year: quarterDueDatesByYear,
         },
       };
     });

@@ -3,7 +3,8 @@ import { z } from 'zod';
 export const dashboardQuerySchema = z.object({
   query: z.object({
     type: z.enum(['all', 'federal', 'state']).optional().default('all'),
-    quarter: z.enum(['all', 'Q1', 'Q2', 'Q3', 'Q4']).optional().default('all'),
+    year: z.union([z.literal('all'), z.coerce.number().int().positive()]).optional().default('all'),
+    quarter: z.enum(['Q1', 'Q2', 'Q3', 'Q4']).optional(),
   }),
 });
 

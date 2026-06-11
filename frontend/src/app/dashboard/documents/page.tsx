@@ -223,10 +223,7 @@ function DocumentsContent() {
     queryFn: () =>
       api
         .get("/api/pdf", {
-          params:
-            pdfQuarterFilter !== "all"
-              ? { quarter: pdfQuarterFilter, year: defaultYear }
-              : undefined,
+          params: { quarter: pdfQuarterFilter, year: defaultYear },
         })
         .then((r) => r.data.data),
     enabled: activeTab === "generated",
@@ -601,9 +598,7 @@ function DocumentsContent() {
           <div className="text-center py-12">
             <FileText className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
             <p className="text-on-surface-variant">
-              {pdfQuarterFilter !== "all"
-                ? `No PDF package generated for ${pdfQuarterFilter} ${defaultYear} yet. Filter a program on Benefits and click Generate PDF.`
-                : "No generated packages found. Apply to programs to generate PDFs."}
+              {`No PDF package generated for ${pdfQuarterFilter} ${defaultYear} yet. Filter a program on Benefits and click Generate PDF.`}
             </p>
           </div>
         ) : (

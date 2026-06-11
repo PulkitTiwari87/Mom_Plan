@@ -92,6 +92,146 @@ export function getRelevantDueDateInQuarter(
   return last ? last.toISOString().slice(0, 10) : null;
 }
 
+export type QuarterDueDatesByProgramAndYear = Map<
+  string,
+  Map<number, Partial<Record<Quarter, string[]>>>
+>;
+
+export function buildQuarterDueDatesByProgramAndYear(
+  records: Array<{ program_id: string; year: number; quarter: string; due_dates_json: unknown }>
+): QuarterDueDatesByProgramAndYear {
+  const map: QuarterDueDatesByProgramAndYear = new Map();
+
+  for (const record of records) {
+    const dueDates = parseDueDatesJson(record.due_dates_json);
+    if (dueDates.length === 0) continue;
+
+    let yearMap = map.get(record.program_id);
+    if (!yearMap) {
+      yearMap = new Map();
+      map.set(record.program_id, yearMap);
+    }
+
+    const quarters = yearMap.get(record.year) ?? {};
+    quarters[record.quarter as Quarter] = dueDates;
+    yearMap.set(record.year, quarters);
+  }
+
+  return map;
+}
+
+export function getAvailableYearsFromProgramYearMap(
+  map: QuarterDueDatesByProgramAndYear
+): number[] {
+  const years = new Set<number>();
+  for (const yearMap of map.values()) {
+    for (const year of yearMap.keys()) {
+      years.add(year);
+    }
+  }
+  return [...years].sort((a, b) => a - b);
+}
+
+export function quarterDueDatesByYearToObject(
+  yearMap: Map<number, Partial<Record<Quarter, string[]>>> | undefined
+): Record<number, Partial<Record<Quarter, string[]>>> {
+  if (!yearMap) return {};
+  return Object.fromEntries(yearMap.entries());
+}
+
+export function filterQuarterRecords<T extends { year: number; quarter: Quarter }>(
+  records: T[],
+  yearFilter: 'all' | number,
+  quarterFilter: 'all' | Quarter
+): T[] {
+  return records.filter((record) => {
+    if (yearFilter !== 'all' && record.year !== yearFilter) return false;
+    if (quarterFilter !== 'all' && record.quarter !== quarterFilter) return false;
+    return true;
+  });
+}
+
+export function getMostRecentPastDueDate(
+  records: Array<{ year: number; quarter: Quarter; due_dates_json: unknown }>,
+  referenceDate: Date = new Date()
+): string | null {
+  const today = new Date(
+    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate())
+  );
+
+  const allDates: Date[] = [];
+  for (const record of records) {
+    for (const dateStr of parseDueDatesJson(record.due_dates_json)) {
+      const parsed = new Date(`${dateStr}T00:00:00.000Z`);
+      if (!Number.isNaN(parsed.getTime())) {
+        allDates.push(parsed);
+      }
+    }
+  }
+
+  allDates.sort((a, b) => b.getTime() - a.getTime());
+
+  for (const date of allDates) {
+    if (date.getTime() < today.getTime()) {
+      return date.toISOString().slice(0, 10);
+    }
+  }
+
+  return null;
+}
+
+export function getPrimaryDueDateForProgram(
+  records: Array<{ year: number; quarter: Quarter; due_dates_json: unknown }>,
+  yearFilter: 'all' | number,
+  quarterFilter: 'all' | Quarter,
+  referenceDate: Date = new Date()
+): string | null {
+  const filtered = filterQuarterRecords(records, yearFilter, quarterFilter);
+  if (filtered.length === 0) return null;
+
+  if (yearFilter === 'all' && quarterFilter === 'all') {
+    const next = getNextUpcomingDueDate(filtered, referenceDate);
+    if (next) return next;
+    return getMostRecentPastDueDate(filtered, referenceDate);
+  }
+
+  if (quarterFilter !== 'all') {
+    const quarterDates: string[] = [];
+    for (const record of filtered) {
+      quarterDates.push(...parseDueDatesJson(record.due_dates_json));
+    }
+    if (quarterDates.length === 0) return null;
+    return getRelevantDueDateInQuarter(quarterDates, referenceDate);
+  }
+
+  const next = getNextUpcomingDueDate(filtered, referenceDate);
+  if (next) return next;
+  return getMostRecentPastDueDate(filtered, referenceDate);
+}
+
+export function programHasMatchingQuarterData(
+  yearMap: Map<number, Partial<Record<Quarter, string[]>>> | undefined,
+  yearFilter: 'all' | number,
+  quarterFilter: 'all' | Quarter
+): boolean {
+  if (!yearMap) return false;
+
+  for (const [year, quarters] of yearMap.entries()) {
+    if (yearFilter !== 'all' && year !== yearFilter) continue;
+
+    if (quarterFilter === 'all') {
+      if (Object.values(quarters).some((dates) => Array.isArray(dates) && dates.length > 0)) {
+        return true;
+      }
+    } else {
+      const dates = quarters[quarterFilter];
+      if (Array.isArray(dates) && dates.length > 0) return true;
+    }
+  }
+
+  return false;
+}
+
 export function getNextUpcomingDueDate(
   quarterRecords: Array<{ year: number; quarter: Quarter; due_dates_json: unknown }>,
   referenceDate: Date = new Date()

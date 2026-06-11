@@ -28,10 +28,13 @@ import { StatusBadge } from "@/components/ui/Badge";
 import { CardSkeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
 import {
+  buildYearFilterOptions,
   formatCurrency,
   formatDate,
   getConfidenceColor,
   getCurrentQuarterYear,
+  getProgramDueDateDisplay,
+  QUARTER_FILTER_OPTIONS,
   resolveQuarterYearForPdf,
 } from "@/lib/utils";
 
@@ -41,51 +44,13 @@ const PROGRAM_SCOPE_OPTIONS = [
   { value: "state", label: "State" },
 ];
 
-const QUARTER_FILTER_OPTIONS = [
-  { value: "Q1", label: "Q1 (Jan–Mar)" },
-  { value: "Q2", label: "Q2 (Apr–Jun)" },
-  { value: "Q3", label: "Q3 (Jul–Sep)" },
-  { value: "Q4", label: "Q4 (Oct–Dec)" },
-];
-
 const selectClassName =
   "w-full appearance-none rounded-lg border border-outline-variant/60 bg-white py-2.5 pl-3 pr-9 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary-300 cursor-pointer";
-
-function getRelevantDueDateInQuarter(dates: string[] | undefined): string | null {
-  if (!dates?.length) return null;
-
-  const today = new Date();
-  const todayUtc = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  const sorted = [...dates].sort();
-
-  for (const dateStr of sorted) {
-    const parsed = new Date(`${dateStr}T00:00:00.000Z`);
-    if (!Number.isNaN(parsed.getTime()) && parsed.getTime() >= todayUtc) {
-      return dateStr;
-    }
-  }
-
-  return sorted[sorted.length - 1] ?? null;
-}
-
-function getProgramQuarterDueDisplay(
-  program: {
-    current_quarter?: string;
-    current_quarter_due_date?: string | null;
-    quarter_due_dates?: Record<string, string[]>;
-  } | null | undefined,
-  quarterFilter: string
-): { quarter: string | null; dueDate: string | null } {
-  const dates = program?.quarter_due_dates?.[quarterFilter];
-  return {
-    quarter: quarterFilter,
-    dueDate: getRelevantDueDateInQuarter(dates),
-  };
-}
 
 export default function BenefitsPage() {
   const [programScope, setProgramScope] = useState<"all" | "federal" | "state">("all");
   const [selectedStateCode, setSelectedStateCode] = useState("");
+  const [yearFilter, setYearFilter] = useState("all");
   const [quarterFilter, setQuarterFilter] = useState<string>(() => getCurrentQuarterYear().quarter);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
   const [selectedProgram, setSelectedProgram] = useState<any>(null);
@@ -113,14 +78,15 @@ export default function BenefitsPage() {
       ...(programScope === "federal" ? { federal: "true" } : {}),
       ...(programScope === "state" ? { state_only: "true" } : {}),
       ...(selectedStateCode ? { state: selectedStateCode } : {}),
+      ...(yearFilter !== "all" ? { year: yearFilter } : { year: "all" }),
       quarter: quarterFilter,
     }),
-    [programScope, selectedStateCode, quarterFilter]
+    [programScope, selectedStateCode, yearFilter, quarterFilter]
   );
 
   const pdfQuarterContext = useMemo(
-    () => resolveQuarterYearForPdf(quarterFilter),
-    [quarterFilter]
+    () => resolveQuarterYearForPdf(quarterFilter, yearFilter),
+    [quarterFilter, yearFilter]
   );
 
   const { data, isLoading, isFetching } = useQuery({
@@ -133,6 +99,11 @@ export default function BenefitsPage() {
   const results = data?.results ?? [];
   const summary = data?.summary;
   const availableStateOptions = data?.availableStates ?? [];
+  const availableYears = data?.availableYears ?? [];
+  const yearFilterOptions = useMemo(
+    () => buildYearFilterOptions(availableYears),
+    [availableYears]
+  );
   const profileState = data?.profileState ?? null;
   const hasActiveStateFilter = !!selectedStateCode;
 
@@ -208,6 +179,48 @@ export default function BenefitsPage() {
           </div>
         )}
         <div className="flex-1 min-w-[10rem]">
+          <label htmlFor="year-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+            Year
+          </label>
+          <div className="relative">
+            <select
+              id="year-filter"
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className={selectClassName}
+            >
+              {yearFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-[10rem]">
+          <label htmlFor="quarter-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+            Quarter
+          </label>
+          <div className="relative">
+            <select
+              id="quarter-filter"
+              value={quarterFilter}
+              onChange={(e) => setQuarterFilter(e.target.value)}
+              className={selectClassName}
+            >
+              {QUARTER_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-[10rem]">
           <label htmlFor="program-scope-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
             Program Type
           </label>
@@ -249,27 +262,6 @@ export default function BenefitsPage() {
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
           </div>
         </div>
-
-        <div className="flex-1 min-w-[10rem]">
-          <label htmlFor="quarter-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
-            Quarter
-          </label>
-          <div className="relative">
-            <select
-              id="quarter-filter"
-              value={quarterFilter}
-              onChange={(e) => setQuarterFilter(e.target.value)}
-              className={selectClassName}
-            >
-              {QUARTER_FILTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-          </div>
-        </div>
       </div>
 
       {/* Results */}
@@ -304,7 +296,11 @@ export default function BenefitsPage() {
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {results.map((result: any, i: number) => {
-            const quarterDueDisplay = getProgramQuarterDueDisplay(result.program, quarterFilter);
+            const quarterDueDisplay = getProgramDueDateDisplay(
+              result.program?.quarter_due_dates_by_year,
+              yearFilter,
+              quarterFilter
+            );
 
             return (
             <motion.div
@@ -360,7 +356,8 @@ export default function BenefitsPage() {
                       {!!quarterDueDisplay.dueDate && (
                         <span className="inline-flex items-center gap-1 whitespace-nowrap align-middle">
                           <Calendar className="w-3 h-3 shrink-0" />
-                          {quarterDueDisplay.quarter} due{" "}
+                          {quarterDueDisplay.quarter}
+                          {quarterDueDisplay.year ? ` ${quarterDueDisplay.year}` : ""} due{" "}
                           {formatDate(quarterDueDisplay.dueDate)}
                         </span>
                       )}
@@ -507,8 +504,8 @@ export default function BenefitsPage() {
           setSelectedProgram(null);
         }}
         program={selectedProgram}
-        pdfQuarter={resolveQuarterYearForPdf(quarterFilter).quarter}
-        pdfYear={resolveQuarterYearForPdf(quarterFilter).year}
+        pdfQuarter={pdfQuarterContext.quarter}
+        pdfYear={pdfQuarterContext.year}
       />
     </div>
   );

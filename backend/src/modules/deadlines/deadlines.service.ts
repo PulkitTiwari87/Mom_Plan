@@ -7,9 +7,9 @@ import {
   normalizeStateCode,
 } from '../eligibility/eligibility.filters';
 import {
-  getNextUpcomingDueDate,
-  getRelevantDueDateInQuarter,
-  parseDueDatesJson,
+  buildQuarterDueDatesByProgramAndYear,
+  getAvailableYearsFromProgramYearMap,
+  getPrimaryDueDateForProgram,
 } from '../programs/quarterDueDates.service';
 import { Quarter } from '../programs/quarterDueDates.types';
 
@@ -17,7 +17,13 @@ export type DeadlineDashboardStatus = 'overdue' | 'due_soon' | 'upcoming';
 
 export interface DeadlineDashboardFilters {
   type: 'all' | 'federal' | 'state';
-  quarter: 'all' | Quarter;
+  year: number | 'all';
+  quarter: Quarter;
+}
+
+export interface DeadlineDashboardResponse {
+  items: DeadlineDashboardItem[];
+  availableYears: number[];
 }
 
 export interface DeadlineDashboardItem {
@@ -51,59 +57,6 @@ function computeDeadlineStatus(daysRemaining: number): DeadlineDashboardStatus {
   return 'upcoming';
 }
 
-function getMostRecentPastDueDate(
-  records: Array<{ year: number; quarter: Quarter; due_dates_json: unknown }>,
-  referenceDate: Date = new Date()
-): string | null {
-  const today = new Date(
-    Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), referenceDate.getUTCDate())
-  );
-
-  const allDates: Date[] = [];
-  for (const record of records) {
-    for (const dateStr of parseDueDatesJson(record.due_dates_json)) {
-      const parsed = new Date(`${dateStr}T00:00:00.000Z`);
-      if (!Number.isNaN(parsed.getTime())) {
-        allDates.push(parsed);
-      }
-    }
-  }
-
-  allDates.sort((a, b) => b.getTime() - a.getTime());
-
-  for (const date of allDates) {
-    if (date.getTime() < today.getTime()) {
-      return date.toISOString().slice(0, 10);
-    }
-  }
-
-  return null;
-}
-
-function getPrimaryDueDateForProgram(
-  records: Array<{ year: number; quarter: Quarter; due_dates_json: unknown }>,
-  quarterFilter: 'all' | Quarter,
-  referenceDate: Date
-): string | null {
-  if (records.length === 0) return null;
-
-  if (quarterFilter === 'all') {
-    const next = getNextUpcomingDueDate(records, referenceDate);
-    if (next) return next;
-    return getMostRecentPastDueDate(records, referenceDate);
-  }
-
-  const quarterDates: string[] = [];
-  for (const record of records) {
-    if (record.quarter === quarterFilter) {
-      quarterDates.push(...parseDueDatesJson(record.due_dates_json));
-    }
-  }
-
-  if (quarterDates.length === 0) return null;
-  return getRelevantDueDateInQuarter(quarterDates, referenceDate);
-}
-
 function sortDashboardItems(items: DeadlineDashboardItem[]): DeadlineDashboardItem[] {
   return [...items].sort((a, b) => {
     const statusDiff = STATUS_SORT_ORDER[a.status] - STATUS_SORT_ORDER[b.status];
@@ -121,7 +74,7 @@ export class DeadlinesService {
   async getDashboard(
     userId: string,
     filters: DeadlineDashboardFilters
-  ): Promise<DeadlineDashboardItem[]> {
+  ): Promise<DeadlineDashboardResponse> {
     const [results, user] = await Promise.all([
       prisma.eligibilityResult.findMany({
         where: {
@@ -166,16 +119,17 @@ export class DeadlinesService {
       ),
     ];
 
-    if (programIds.length === 0) return [];
+    if (programIds.length === 0) {
+      return { items: [], availableYears: [] };
+    }
 
     const referenceDate = new Date();
-    const currentYear = referenceDate.getUTCFullYear();
     const quarterRecords = await prisma.programQuarterDueDate.findMany({
-      where: {
-        program_id: { in: programIds },
-        year: { in: [currentYear, currentYear + 1] },
-      },
+      where: { program_id: { in: programIds } },
     });
+
+    const recordsByProgramAndYear = buildQuarterDueDatesByProgramAndYear(quarterRecords);
+    const availableYears = getAvailableYearsFromProgramYearMap(recordsByProgramAndYear);
 
     const recordsByProgram = new Map<string, typeof quarterRecords>();
     for (const record of quarterRecords) {
@@ -196,6 +150,7 @@ export class DeadlinesService {
           quarter: record.quarter as Quarter,
           due_dates_json: record.due_dates_json,
         })),
+        filters.year,
         filters.quarter,
         referenceDate
       );
@@ -229,7 +184,10 @@ export class DeadlinesService {
       }
     }
 
-    return sortDashboardItems([...uniqueByProgram.values()]);
+    return {
+      items: sortDashboardItems([...uniqueByProgram.values()]),
+      availableYears,
+    };
   }
 
   async listDeadlines(userId: string, role: UserRole) {

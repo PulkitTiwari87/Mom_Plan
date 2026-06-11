@@ -7,19 +7,12 @@ import { Card } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/Badge";
 import { TableSkeleton } from "@/components/ui/Skeleton";
 import { api } from "@/lib/api";
+import { buildYearFilterOptions, getCurrentQuarterYear, QUARTER_FILTER_OPTIONS } from "@/lib/utils";
 
 const PROGRAM_TYPE_OPTIONS = [
   { value: "all", label: "All" },
   { value: "federal", label: "Federal" },
   { value: "state", label: "State" },
-];
-
-const QUARTER_OPTIONS = [
-  { value: "all", label: "All" },
-  { value: "Q1", label: "Q1 (Jan–Mar)" },
-  { value: "Q2", label: "Q2 (Apr–Jun)" },
-  { value: "Q3", label: "Q3 (Jul–Sep)" },
-  { value: "Q4", label: "Q4 (Oct–Dec)" },
 ];
 
 const selectClassName =
@@ -76,21 +69,33 @@ function getRowAccent(status: DashboardItem["status"]): string {
   }
 }
 
+type DashboardResponse = {
+  items: DashboardItem[];
+  availableYears: number[];
+};
+
 export default function ProgramDeadlinesDashboard() {
   const [programType, setProgramType] = useState<"all" | "federal" | "state">("all");
-  const [quarter, setQuarter] = useState<"all" | "Q1" | "Q2" | "Q3" | "Q4">("all");
+  const [year, setYear] = useState("all");
+  const [quarter, setQuarter] = useState<"Q1" | "Q2" | "Q3" | "Q4">(
+    () => getCurrentQuarterYear().quarter
+  );
 
-  const { data: items = [], isLoading, isFetching } = useQuery({
-    queryKey: ["deadlines-dashboard", programType, quarter],
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ["deadlines-dashboard", programType, year, quarter],
     queryFn: () =>
       api
         .get("/api/deadlines/dashboard", {
-          params: { type: programType, quarter },
+          params: { type: programType, year, quarter },
         })
-        .then((r) => r.data.data as DashboardItem[]),
+        .then((r) => r.data.data as DashboardResponse),
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });
+
+  const items = data?.items ?? [];
+  const yearFilterOptions = buildYearFilterOptions(data?.availableYears ?? []);
+  const hasActiveFilters = programType !== "all" || year !== "all";
 
   const overdueCount = items.filter((item) => item.status === "overdue").length;
   const dueSoonCount = items.filter((item) => item.status === "due_soon").length;
@@ -126,6 +131,48 @@ export default function ProgramDeadlinesDashboard() {
           </div>
         )}
         <div className="flex-1 min-w-[10rem]">
+          <label htmlFor="deadline-year-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+            Year
+          </label>
+          <div className="relative">
+            <select
+              id="deadline-year-filter"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className={selectClassName}
+            >
+              {yearFilterOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-[10rem]">
+          <label htmlFor="deadline-quarter-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
+            Quarter
+          </label>
+          <div className="relative">
+            <select
+              id="deadline-quarter-filter"
+              value={quarter}
+              onChange={(e) => setQuarter(e.target.value as "Q1" | "Q2" | "Q3" | "Q4")}
+              className={selectClassName}
+            >
+              {QUARTER_FILTER_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
+          </div>
+        </div>
+
+        <div className="flex-1 min-w-[10rem]">
           <label htmlFor="deadline-program-type" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
             Program Type
           </label>
@@ -145,27 +192,6 @@ export default function ProgramDeadlinesDashboard() {
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
           </div>
         </div>
-
-        <div className="flex-1 min-w-[10rem]">
-          <label htmlFor="deadline-quarter-filter" className="block text-xs font-semibold text-on-surface-variant mb-1.5">
-            Quarter
-          </label>
-          <div className="relative">
-            <select
-              id="deadline-quarter-filter"
-              value={quarter}
-              onChange={(e) => setQuarter(e.target.value as "all" | "Q1" | "Q2" | "Q3" | "Q4")}
-              className={selectClassName}
-            >
-              {QUARTER_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
-          </div>
-        </div>
       </div>
 
       {isLoading ? (
@@ -177,7 +203,7 @@ export default function ProgramDeadlinesDashboard() {
           <Calendar className="w-10 h-10 text-on-surface-variant/30 mx-auto mb-3" />
           <p className="font-medium text-on-surface mb-1">No renewal deadlines found</p>
           <p className="text-sm text-on-surface-variant max-w-md mx-auto">
-            {programType !== "all" || quarter !== "all"
+            {hasActiveFilters
               ? "Try adjusting your filters to see more program renewal dates."
               : "Complete your eligibility scan to see upcoming program renewal deadlines for your matched benefits."}
           </p>
