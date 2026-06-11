@@ -131,6 +131,11 @@ export function getStatusLabel(status: string): string {
     approved: "Approved",
     rejected: "Rejected",
     withdrawn: "Withdrawn",
+    overdue: "Overdue",
+    due_soon: "Due Soon",
+    upcoming: "Upcoming",
+    federal: "Federal",
+    state: "State",
   };
   return labels[status] || slugToTitle(status);
 }

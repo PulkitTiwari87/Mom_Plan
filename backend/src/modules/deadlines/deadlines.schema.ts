@@ -1,5 +1,12 @@
 import { z } from 'zod';
 
+export const dashboardQuerySchema = z.object({
+  query: z.object({
+    type: z.enum(['all', 'federal', 'state']).optional().default('all'),
+    quarter: z.enum(['all', 'Q1', 'Q2', 'Q3', 'Q4']).optional().default('all'),
+  }),
+});
+
 export const deadlineIdParamSchema = z.object({
   params: z.object({
     id: z.string().min(1),

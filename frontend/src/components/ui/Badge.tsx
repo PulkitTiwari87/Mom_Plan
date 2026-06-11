@@ -33,6 +33,12 @@ const statusStyles: Record<string, string> = {
   normal: "bg-gray-50 text-gray-600 border-gray-200",
   high: "bg-orange-50 text-orange-700 border-orange-200",
   urgent: "bg-red-50 text-red-700 border-red-200",
+  // Deadline dashboard
+  overdue: "bg-red-50 text-red-700 border-red-200",
+  due_soon: "bg-orange-50 text-orange-700 border-orange-200",
+  upcoming: "bg-blue-50 text-blue-700 border-blue-200",
+  federal: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  state: "bg-violet-50 text-violet-700 border-violet-200",
 };
 
 const statusDots: Record<string, string> = {
@@ -48,6 +54,9 @@ const statusDots: Record<string, string> = {
   rejected: "bg-red-500",
   urgent: "bg-red-500",
   high: "bg-orange-500",
+  overdue: "bg-red-500",
+  due_soon: "bg-orange-500",
+  upcoming: "bg-blue-500",
 };
 
 export function StatusBadge({ status, className }: BadgeProps) {
