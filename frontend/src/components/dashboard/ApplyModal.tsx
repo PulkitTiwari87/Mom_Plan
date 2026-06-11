@@ -30,15 +30,22 @@ interface ApplyModalProps {
   pdfYear?: number;
 }
 
-function isApplicationPackageForQuarter(
-  doc: { document_type?: string; display_name?: string },
-  quarter?: string,
-  year?: number
-): boolean {
-  if (doc.document_type !== "application_package" || !quarter || year == null) {
-    return false;
+function isVaultDocumentForProgram(
+  doc: {
+    id?: string;
+    document_type?: string;
+    application_id?: string | null;
+  },
+  options: {
+    packageVaultDocId?: string;
+    programApplicationIds: string[];
   }
-  return doc.display_name?.includes(`_${quarter}_${year}_`) ?? false;
+): boolean {
+  if (doc.document_type === "application_package") {
+    return doc.id === options.packageVaultDocId;
+  }
+  if (!doc.application_id) return true;
+  return options.programApplicationIds.includes(doc.application_id);
 }
 
 export default function ApplyModal({
@@ -114,22 +121,31 @@ export default function ApplyModal({
       d.original_file_name === `generated_pdf:${pdfPackage.id}`
   );
 
-  // Auto-select supporting vault docs; only select application_package for active quarter
+  const programApplicationIds = [
+    ...new Set([
+      ...(applications || [])
+        .filter((a: any) => a.program_id === program?.id)
+        .map((a: any) => a.id),
+      ...(applicationId ? [applicationId] : []),
+    ]),
+  ];
+
+  const vaultDocFilterOptions = {
+    packageVaultDocId: packageVaultDoc?.id,
+    programApplicationIds,
+  };
+
+  // Auto-select all vault docs relevant to this program (shared uploads + this program's attachments)
   useEffect(() => {
     if (!documents) return;
 
     const ids = documents
-      .filter((d: any) => {
-        if (d.document_type === "application_package") {
-          return packageVaultDoc?.id === d.id;
-        }
-        return true;
-      })
+      .filter((d: any) => isVaultDocumentForProgram(d, vaultDocFilterOptions))
       .map((d: any) => d.id);
 
     setSelectedDocIds(ids);
     setAttachPdf(!!pdfPackage);
-  }, [documents, packageVaultDoc?.id, pdfPackage?.id]);
+  }, [documents, packageVaultDoc?.id, pdfPackage?.id, programApplicationIds.join(",")]);
 
   // Backfill vault entry for PDFs generated before vault sync existed
   useEffect(() => {
@@ -294,11 +310,7 @@ export default function ApplyModal({
   };
 
   const vaultDocuments = [...(documents || [])]
-    .filter((d: any) => {
-      if (d.document_type !== "application_package") return true;
-      if (!pdfQuarter || pdfYear == null) return true;
-      return isApplicationPackageForQuarter(d, pdfQuarter, pdfYear);
-    })
+    .filter((d: any) => isVaultDocumentForProgram(d, vaultDocFilterOptions))
     .sort((a: any, b: any) => {
       if (a.document_type === "application_package") return -1;
       if (b.document_type === "application_package") return 1;
