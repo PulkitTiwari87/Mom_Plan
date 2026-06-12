@@ -39,6 +39,10 @@ import { api } from "@/lib/api";
  * Handles the case where old Zustand-persisted state still has the raw
  * Decimal object shape { s, e, d } from before the backend serialization fix.
  */
+function normalizeSsnLastFour(value: string | null | undefined): string {
+  return String(value ?? "").replace(/\D/g, "").slice(0, 4);
+}
+
 function parseDecimalToString(val: any): string {
   if (val === null || val === undefined) return "";
   if (typeof val === "number") return String(val);
@@ -286,6 +290,27 @@ function Input({ placeholder, value, onChange, type = "text", maxLength, inputMo
   );
 }
 
+function SsnLastFourInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const handleChange = (raw: string) => onChange(normalizeSsnLastFour(raw));
+
+  return (
+    <input
+      type="password"
+      placeholder="••••"
+      value={normalizeSsnLastFour(value)}
+      maxLength={4}
+      inputMode="numeric"
+      autoComplete="off"
+      onChange={(e) => handleChange(e.target.value)}
+      onPaste={(e) => {
+        e.preventDefault();
+        handleChange(e.clipboardData.getData("text"));
+      }}
+      className="w-[4.5rem] px-3 py-3 rounded-xl border border-outline-variant bg-white focus:border-primary-500 focus:ring-2 focus:ring-primary-100 outline-none text-sm transition-all font-medium text-on-surface placeholder:text-on-surface-variant/60 tracking-[0.3em] text-center"
+    />
+  );
+}
+
 function DollarInput({ placeholder, value, onChange }: { placeholder?: string; value: string; onChange: (v: string) => void }) {
   return (
     <div className="relative">
@@ -517,7 +542,7 @@ export default function EligibilityPage() {
           first_name: fp?.first_name || first || "",
           last_name: fp?.last_name || last || "",
           date_of_birth: dobStr,
-          ssn_last_four: fp?.ssn_last_four || "",
+          ssn_last_four: normalizeSsnLastFour(fp?.ssn_last_four),
           phone: freshUser?.phone || fp?.phone || "",
           email: freshUser?.email || fp?.email || "",
           preferred_language: fp?.preferred_language || "English",
@@ -603,7 +628,7 @@ export default function EligibilityPage() {
         try {
           const parsed = JSON.parse(pendingScan);
           if (parsed) {
-            setFormData(parsed);
+            setFormData({ ...parsed, ssn_last_four: normalizeSsnLastFour(parsed.ssn_last_four) });
             if (isAuthenticated) {
               localStorage.removeItem("pending_eligibility_scan");
               runScan(parsed);
@@ -689,7 +714,7 @@ export default function EligibilityPage() {
         chronic_illness: dataToSubmit.chronic_illness ?? false,
         immigration_status: dataToSubmit.immigration_status,
         date_of_birth: dataToSubmit.date_of_birth || null,
-        ssn_last_four: dataToSubmit.ssn_last_four || null,
+        ssn_last_four: normalizeSsnLastFour(dataToSubmit.ssn_last_four) || null,
         preferred_language: dataToSubmit.preferred_language,
         marital_status: dataToSubmit.marital_status,
         other_adults: dataToSubmit.other_adults ?? false,
@@ -958,7 +983,7 @@ export default function EligibilityPage() {
                       <FieldLabel sub="Used only for identity verification. Never stored or shared.">
                         Last 4 digits of your Social Security Number
                       </FieldLabel>
-                      <Input placeholder="••••" type="password" value={formData.ssn_last_four} onChange={(v) => set("ssn_last_four", v.replace(/\D/g, "").slice(0, 4))} maxLength={4} inputMode="numeric" />
+                      <SsnLastFourInput value={formData.ssn_last_four} onChange={(v) => set("ssn_last_four", v)} />
                     </div>
 
                     <div>
