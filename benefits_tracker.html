@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Benefits Program Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: linear-gradient(135deg, #f3eaff 0%, #ede0ff 50%, #f8f0ff 100%);
+    min-height: 100vh;
+    padding: 32px 20px;
+  }
+
+  .container {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .header .flower {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+  .header h1 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #6b21a8;
+    letter-spacing: 0.3px;
+  }
+
+  .header p {
+    font-size: 0.92rem;
+    color: #9b6bb5;
+    margin-top: 4px;
+    font-weight: 600;
+  }
+
+  .card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(139, 92, 192, 0.15);
+    overflow: hidden;
+    border: 1.5px solid #e9d5ff;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  thead tr {
+    background: linear-gradient(90deg, #7c3aed, #a855f7);
+  }
+
+  thead th {
+    color: white;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 14px 20px;
+    text-align: left;
+  }
+
+  thead th:last-child {
+    text-align: center;
+  }
+
+  tbody tr {
+    border-bottom: 1px solid #f3e8ff;
+    transition: background 0.2s;
+  }
+
+  tbody tr:nth-child(odd) {
+    background: #faf5ff;
+  }
+
+  tbody tr:nth-child(even) {
+    background: #ffffff;
+  }
+
+  tbody tr:hover {
+    background: #ede9fe;
+  }
+
+  tbody tr:last-child {
+    border-bottom: none;
+  }
+
+  td {
+    padding: 14px 20px;
+    font-size: 0.9rem;
+    color: #4b2d6f;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  .program-name {
+    font-weight: 700;
+    color: #5b21b6;
+    font-size: 0.93rem;
+  }
+
+  .badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #ddd6fe, #c4b5fd);
+    color: #5b21b6;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border-radius: 20px;
+    padding: 3px 12px;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    border: 1px solid #c4b5fd;
+  }
+
+  .days-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 20px;
+    padding: 4px 13px;
+    font-size: 0.82rem;
+    font-weight: 800;
+  }
+
+  .days-urgent {
+    background: #fde8ff;
+    color: #7c3aed;
+    border: 1.5px solid #e879f9;
+  }
+
+  .days-normal {
+    background: #ede9fe;
+    color: #5b21b6;
+    border: 1.5px solid #c4b5fd;
+  }
+
+  .due-date {
+    text-align: center;
+    font-weight: 700;
+    color: #7c3aed;
+    font-size: 0.88rem;
+  }
+
+  .footer {
+    text-align: center;
+    margin-top: 18px;
+    font-size: 0.82rem;
+    color: #a78bca;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <span class="flower">🌸</span>
+    <h1>Benefits Program Tracker</h1>
+    <p>Keeping your family covered — stay ahead of every deadline 💜</p>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th>Program Name</th>
+          <th>Type</th>
+          <th>Days Remaining</th>
+          <th>Due Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="program-name">🛒 SNAP — Food Stamps</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-urgent">⏰ 18 Days</span></td>
+          <td class="due-date">Jun 29, 2026</td>
+        </tr>
+        <tr>
+          <td class="program-name">🏠 Section 8 Housing Choice Voucher</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-urgent">⏰ 18 Days</span></td>
+          <td class="due-date">Jun 29, 2026</td>
+        </tr>
+        <tr>
+          <td class="program-name">💊 Medicaid &amp; CHIP</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-urgent">⏰ 18 Days</span></td>
+          <td class="due-date">Jun 29, 2026</td>
+        </tr>
+        <tr>
+          <td class="program-name">⚖️ Civil Legal Aid Services</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-urgent">⏰ 18 Days</span></td>
+          <td class="due-date">Jun 29, 2026</td>
+        </tr>
+        <tr>
+          <td class="program-name">💡 LIHEAP — Energy Assistance</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-urgent">⏰ 18 Days</span></td>
+          <td class="due-date">Jun 29, 2026</td>
+        </tr>
+        <tr>
+          <td class="program-name">🎓 Federal Pell Grant</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-urgent">⏰ 18 Days</span></td>
+          <td class="due-date">Jun 29, 2026</td>
+        </tr>
+        <tr>
+          <td class="program-name">📱 Lifeline Phone &amp; Internet</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-urgent">⏰ 18 Days</span></td>
+          <td class="due-date">Jun 29, 2026</td>
+        </tr>
+        <tr>
+          <td class="program-name">💰 Earned Income Tax Credit (EITC)</td>
+          <td><span class="badge">Federal</span></td>
+          <td><span class="days-pill days-normal">📅 49 Days</span></td>
+          <td class="due-date">Jul 30, 2026</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    💜 You've got this, mama — every deadline met is a win for your family! 💜
+  </div>
+</div>
+</body>
+</html>
