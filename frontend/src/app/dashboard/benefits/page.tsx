@@ -49,7 +49,6 @@ const selectClassName =
 
 export default function BenefitsPage() {
   const [programScope, setProgramScope] = useState<"all" | "federal" | "state">("all");
-  const [selectedStateCode, setSelectedStateCode] = useState("");
   const [yearFilter, setYearFilter] = useState("all");
   const [quarterFilter, setQuarterFilter] = useState<string>(() => getCurrentQuarterYear().quarter);
   const [applyModalOpen, setApplyModalOpen] = useState(false);
@@ -77,11 +76,10 @@ export default function BenefitsPage() {
     () => ({
       ...(programScope === "federal" ? { federal: "true" } : {}),
       ...(programScope === "state" ? { state_only: "true" } : {}),
-      ...(selectedStateCode ? { state: selectedStateCode } : {}),
       ...(yearFilter !== "all" ? { year: yearFilter } : { year: "all" }),
       quarter: quarterFilter,
     }),
-    [programScope, selectedStateCode, yearFilter, quarterFilter]
+    [programScope, yearFilter, quarterFilter]
   );
 
   const pdfQuarterContext = useMemo(
@@ -98,15 +96,12 @@ export default function BenefitsPage() {
 
   const results = data?.results ?? [];
   const summary = data?.summary;
-  const availableStateOptions = data?.availableStates ?? [];
   const availableYears = data?.availableYears ?? [];
   const yearFilterOptions = useMemo(
     () => buildYearFilterOptions(availableYears),
     [availableYears]
   );
   const profileState = data?.profileState ?? null;
-  const hasActiveStateFilter = !!selectedStateCode;
-
   const scanMutation = useMutation({
     mutationFn: () => api.post("/api/eligibility/scan"),
     onSuccess: () => {
@@ -164,7 +159,7 @@ export default function BenefitsPage() {
         </motion.div>
       )}
 
-      {profileState && !hasActiveStateFilter && programScope === "all" && (
+      {profileState && programScope === "all" && (
         <p className="mb-4 text-sm text-on-surface-variant">
           Showing federal and {profileState} state programs based on your profile.
         </p>
@@ -248,16 +243,10 @@ export default function BenefitsPage() {
           <div className="relative">
             <select
               id="state-filter"
-              value={selectedStateCode}
-              onChange={(e) => setSelectedStateCode(e.target.value)}
+              value=""
               className={selectClassName}
             >
               <option value="">All States</option>
-              {availableStateOptions.map((option: { code: string; label: string }) => (
-                <option key={option.code} value={option.code}>
-                  {option.label} ({option.code})
-                </option>
-              ))}
             </select>
             <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-on-surface-variant" />
           </div>
